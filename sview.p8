@@ -540,9 +540,13 @@ sview {
     str stat = iso:"                                 "
     sub draw_status() {
         ; Sunset: cream on black; Quill (theme sprite) sits in columns 0-1
-        vid.fill(0, STATUS_ROW, 80, 0, vid.C_BLACK)
-        put(3, STATUS_ROW, status_msg, vid.C_WHITE, vid.C_BLACK)
-        if not single() and not editing {
+        ; Work out the selection SUM first, then compose the whole row in vid's r_ buffers and render
+        ; it in one pass: blanking the row first and drawing each piece on top made it flash.
+        bool show_sum = not single() and not editing
+        float sum = 0.0
+        ubyte e = 0
+        uword cnt = 0
+        if show_sum {
             ; SUM / COUNT of the selection, like the status bar of a desktop spreadsheet
             sel_norm()
             ubyte n = 0
@@ -554,18 +558,38 @@ sview {
             formula.ob[n] = iso:')'
             n++
             formula.eval(&formula.ob, n)
-            float sum = formula.result
-            ubyte e = formula.everr
-            uword cnt = formula.fcnt[0]
-            put(49, STATUS_ROW, iso:"Sum", vid.C_LGRAY, vid.C_BLACK)
-            if e != 0
-                put(53, STATUS_ROW, formula.err_text(e), vid.C_RED, vid.C_BLACK)
-            else {
+            sum = formula.result
+            e = formula.everr
+            cnt = formula.fcnt[0]
+            if e == 0
                 numfmt.format(sum, 0, 14)
-                put(53, STATUS_ROW, &numfmt.out, vid.C_YELLOW, vid.C_BLACK)
-            }
-            put(68, STATUS_ROW, iso:"Count", vid.C_LGRAY, vid.C_BLACK)
-            num(74, STATUS_ROW, cnt, vid.C_YELLOW, vid.C_BLACK)
+        }
+        ubyte i
+        for i in 0 to 79 {
+            vid.r_ch[i] = 32
+            vid.r_sty[i] = 0
+            vid.r_col[i] = (vid.C_BLACK << 4) | vid.C_WHITE
+        }
+        st_put(3, status_msg, vid.C_WHITE)
+        if show_sum {
+            st_put(49, iso:"Sum", vid.C_LGRAY)
+            if e != 0
+                st_put(53, formula.err_text(e), vid.C_RED)
+            else
+                st_put(53, &numfmt.out, vid.C_YELLOW)
+            st_put(68, iso:"Count", vid.C_LGRAY)
+            st_put(74, conv.str_uw(cnt), vid.C_YELLOW)
+        }
+        vid.render_run(STATUS_ROW, 0, 80)
+    }
+
+    sub st_put(ubyte col, uword s, ubyte fg) {
+        ubyte n = 0
+        while @(s + n) != 0 and col < 80 {
+            vid.r_ch[col] = @(s + n)
+            vid.r_col[col] = (vid.C_BLACK << 4) | fg
+            col++
+            n++
         }
     }
 
