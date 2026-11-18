@@ -135,6 +135,7 @@ ui {
 
     ; ---------------- toolbars / title ----------------
     sub draw_toolbar() {
+        mn.compose_begin()      ; drawn row by row in one pass each: no flash
         mn.bt_n = 0
         ; Sunset title bar: stripes with black chips
         mn.stripes(0, 0, 80)
@@ -186,6 +187,7 @@ ui {
         mn.put(62, 2, iso:"free", C_LGRAY, C_DGRAY)
         mn.num(67, 2, mn.free_count(), C_WHITE, C_DGRAY)
         mn.draw_fbar()
+        mn.compose_end()
     }
 
     uword[] tips = [

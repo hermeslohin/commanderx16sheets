@@ -3,7 +3,7 @@
 ;   hash index : RAM banks 1..4    16384 slots x 2 bytes (record index + 1; 0 = empty, $ffff = deleted)
 ;   records    : RAM banks 5..54   128 records x 64 bytes per bank = 6400 cells on a 512 KB X16,
 ;                + banks 64..      on bigger machines (up to 12288 records in all)
-;   bank 56    : used-row bitmap (xlsx writer)
+;   bank 56    : used-row bitmap (xlsx writer) $a000, vid's compose buffers $a500, SD picker names $a800
 ;   banks 55, 57-59, 62, 63: X16 Sheets' code libraries; 60/61: X16Link libraries.
 ;
 ; A record holds one cell: position, type, style, cached value (5-byte float) and up to 50 bytes of

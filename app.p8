@@ -67,6 +67,8 @@ app {
     ; the bank libraries call these main-RAM routines; this (never taken) path keeps the compiler
     ; from removing the ones the main program doesn't use itself
     sub keep() {
+        vid.compose_begin()
+        vid.compose_end()
         void cells.rd(0)
         cells.mark_rows()
         void cells.row_has(1)

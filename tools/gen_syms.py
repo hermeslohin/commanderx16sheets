@@ -21,6 +21,8 @@ B, W, BO = "ubyte", "uword", "bool"
 # (alias, block, sub, [(param, type)], return type or None)
 SUBS = [
     ("render_run", "vid", "render_run", [("row", B), ("col0", B), ("n", B)], None),
+    ("compose_begin", "vid", "compose_begin", [], None),
+    ("compose_end", "vid", "compose_end", [], None),
     ("vtext", "vid", "text", [("col", B), ("row", B), ("s", W), ("sty", B), ("fg", B), ("bg", B)], None),
     ("vfill", "vid", "fill", [("col", B), ("row", B), ("n", B), ("fg", B), ("bg", B)], None),
     ("set_status", "sview", "set_status", [("s", W)], None),

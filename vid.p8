@@ -191,7 +191,92 @@ vid {
     }
 
     ; draws the first n cells of r_ch/r_sty/r_col at cell (col0,row)
+    ; ---- compose mode: build rows off screen, then draw each row in one pass ----
+    ; Between compose_begin() and compose_end(), render_run() only collects cells (per row); a row is
+    ; drawn when drawing moves on to another row, or at compose_end(). Only the cells that were drawn
+    ; are written, so painting a background and then drawing on top of it (title bar stripes + chips,
+    ; toolbar fill + icons) no longer shows the half-drawn state as a flash.
+    bool composing
+    ubyte comp_row = 255
+    ; the collected row (80 bytes each), in RAM bank 56 between the used-row bitmap and the SD
+    ; picker names (see cells.p8)
+    const ubyte S_BANK = 56
+    const uword s_ch = $a500
+    const uword s_sty = $a550
+    const uword s_col = $a5a0
+    const uword s_set = $a5f0
+
+    sub compose_begin() {
+        ubyte obank = cx16.getrambank()
+        cx16.rambank(S_BANK)
+        sys.memset(s_set, 80, 0)
+        cx16.rambank(obank)
+        comp_row = 255
+        composing = true
+    }
+
+    sub compose_end() {
+        comp_flush()
+        composing = false
+    }
+
+    sub comp_flush() {
+        if comp_row == 255
+            return
+        ubyte obank = cx16.getrambank()
+        ubyte i = 0
+        ubyte j
+        ubyte k
+        while i < 80 {
+            cx16.rambank(S_BANK)
+            if @(s_set + i) == 0 {
+                i++
+                continue
+            }
+            j = i
+            k = 0
+            while j < 80 and @(s_set + j) != 0 {
+                r_ch[k] = @(s_ch + j)
+                r_sty[k] = @(s_sty + j)
+                r_col[k] = @(s_col + j)
+                @(s_set + j) = 0
+                j++
+                k++
+            }
+            cx16.rambank(obank)
+            draw_run(comp_row, i, k)
+            i = j
+        }
+        cx16.rambank(obank)
+        comp_row = 255
+    }
+
+    ; draws the first n cells of r_ch/r_sty/r_col at cell (col0,row) (collects them in compose mode)
     sub render_run(ubyte row, ubyte col0, ubyte n) {
+        if not composing {
+            draw_run(row, col0, n)
+            return
+        }
+        if row != comp_row {
+            comp_flush()
+            comp_row = row
+        }
+        ubyte obank = cx16.getrambank()
+        cx16.rambank(S_BANK)
+        ubyte i = 0
+        ubyte c = col0
+        while i < n and c < 80 {
+            @(s_ch + c) = r_ch[i]
+            @(s_sty + c) = r_sty[i]
+            @(s_col + c) = r_col[i]
+            @(s_set + c) = 1
+            i++
+            c++
+        }
+        cx16.rambank(obank)
+    }
+
+    sub draw_run(ubyte row, ubyte col0, ubyte n) {
         if n == 0
             return
         ubyte i
