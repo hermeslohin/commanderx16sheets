@@ -21,6 +21,12 @@ Row 0 title/quit - rows 1-2 icon toolbars - row 3 formula bar - column letters -
 with grid lines - horizontal scroll bar - status bar (tool tips on hover; Sum and Count of the
 selection, like a desktop spreadsheet).
 
+Colours: the X16 Office "Sunset Arcade" theme (`theme.p8`, the same file in X16 Write, Files and
+Calendar): striped title bar with black chips, violet toolbars with coloured icon faces, cream cells
+with lavender grid lines, the active cell and selection in pink, black status bar where Quill, a
+little pencil (a sprite), blinks and hops after a successful open or save. Only the screen palette
+changes: saved `.xlsx` files carry no colours from it (cells have no colour in this format).
+
 Toolbar 1: New, Open, Save, Save As | Cut, Copy, Paste, Select All | Clear | Bold | Align left,
 Center, Align right (the X16 Write icons). Toolbar 2: AutoSum, Insert function | Number format
 General, 0.00, Percent, Currency | Insert rows, Delete rows, Insert columns, Delete columns |
@@ -101,6 +107,7 @@ reference, reported in the status bar). Opening a file recalculates everything o
 | `formula.p8` | evaluator (iterative shunting-yard), reference rewriting, recalculation |
 | `numfmt.p8` | number display formats |
 | `vid.p8` | X16 Write's 80x30 bitmap text renderer + grid lines |
+| `theme.p8` | Sunset Arcade theme: palette roles, title stripes / pill glyphs, Quill (shared with the other X16 Office apps) |
 | `shui.p8` `shops.p8` `shfile.p8` `shxw.p8` `shxr.p8` `shsa.p8` | the bank libraries (see `shlibs.p8`) |
 | `tools/gen_syms.py` | generates each library's view of the main program (like X16 Write's `gen_wpsyms.py`) |
 | `tools/gen_icons.py` | toolbar icons (the first 13 are X16 Write's) |

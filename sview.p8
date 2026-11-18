@@ -18,6 +18,7 @@
 %import cells
 %import formula
 %import numfmt
+%import theme
 
 sview {
     %option ignore_unused
@@ -173,16 +174,17 @@ sview {
         }
     }
 
-    sub icon(ubyte col, ubyte row, ubyte k, ubyte id, bool active) {
-        ubyte bg = vid.C_WHITE
-        if active
-            bg = vid.C_LBLUE
+    ; icon cell pair with a coloured face (Sunset: violet faces get cream glyphs, the others black)
+    sub icon(ubyte col, ubyte row, ubyte k, ubyte id, ubyte face) {
+        ubyte k2 = face << 4
+        if face == vid.C_GRAY
+            k2 |= vid.C_WHITE
         vid.r_ch[0] = k * 2
         vid.r_ch[1] = k * 2 + 1
         vid.r_sty[0] = vid.S_RAW | $30
         vid.r_sty[1] = vid.S_RAW | $30
-        vid.r_col[0] = bg << 4
-        vid.r_col[1] = bg << 4
+        vid.r_col[0] = k2
+        vid.r_col[1] = k2
         vid.render_run(row, col, 2)
         add_btn(col, row, id)
     }
@@ -201,25 +203,28 @@ sview {
     ; ---------------- formula bar ----------------
     sub draw_fbar() {
         ubyte i
-        vid.fill(0, FBAR, 80, 0, vid.C_LGRAY)
-        ; cell name box
+        vid.fill(0, FBAR, 80, 0, vid.C_DGRAY)
+        ; cell name chip
         for i in 0 to 6 {
             vid.r_ch[i] = 32
-            vid.r_sty[i] = 0
-            vid.r_col[i] = vid.C_WHITE << 4
+            vid.r_sty[i] = vid.S_BOLD
+            vid.r_col[i] = vid.C_RED << 4
         }
         ubyte n = formula.cell_name(cur_r, cur_c, &tmp)
         for i in 0 to n - 1
             vid.r_ch[i + 1] = tmp[i]
         vid.render_run(FBAR, 0, 7)
-        icon(8, FBAR, icons.I_QUIT, B_ECANCEL, false)
-        icon(11, FBAR, icons.I_OK, B_EOK, false)
-        icon(14, FBAR, icons.I_FX, B_EFX, false)
-        ; contents
+        icon(8, FBAR, icons.I_QUIT, B_ECANCEL, vid.C_GRAY)
+        icon(11, FBAR, icons.I_OK, B_EOK, vid.C_GRAY)
+        icon(14, FBAR, icons.I_FX, B_EFX, vid.C_PURPLE)
+        ; contents: cream on black, yellow while editing
+        ubyte k = (vid.C_BLACK << 4) | vid.C_WHITE
+        if editing
+            k = (vid.C_BLACK << 4) | vid.C_YELLOW
         for i in 0 to 79 - EDITX {
             vid.r_ch[i] = 32
             vid.r_sty[i] = 0
-            vid.r_col[i] = vid.C_WHITE << 4
+            vid.r_col[i] = k
         }
         if editing {
             for i in 0 to elen - 1 {
@@ -228,7 +233,7 @@ sview {
             }
             if elen == 0
                 vid.r_ch[1] = 32
-            vid.r_col[ecur + 1] = vid.C_WHITE     ; cursor: black block
+            vid.r_col[ecur + 1] = vid.C_YELLOW << 4   ; cursor: yellow block
         } else {
             n = cell_source(cur_r, cur_c, &ebuf)
             for i in 0 to n - 1 {
@@ -315,19 +320,19 @@ sview {
         sel_norm()
         for x in 0 to 79 {
             vid.r_ch[x] = 32
-            vid.r_sty[x] = vid.S_GRIDB
-            vid.r_col[x] = vid.C_LGRAY << 4
+            vid.r_sty[x] = 0
+            vid.r_col[x] = vid.C_DGRAY << 4
         }
-        vid.r_sty[RHW - 1] = vid.S_GRIDB | vid.S_GRIDR
+        vid.r_col[GX1] = vid.C_BLACK << 4
         for i in 0 to vis_n - 1 {
             ubyte c = vis_col[i]
             ubyte w = vis_w[i]
-            ubyte bg = vid.C_LGRAY
+            ubyte k = (vid.C_DGRAY << 4) | vid.C_WHITE
             if c >= s_c1 and c <= s_c2
-                bg = vid.C_GRAY
+                k = vid.C_RED << 4
             for x in vis_x[i] to vis_x[i] + w - 1
-                vid.r_col[x] = bg << 4
-            vid.r_sty[vis_x[i] + w - 1] = vid.S_GRIDB | vid.S_GRIDR
+                vid.r_col[x] = k
+            vid.r_sty[vis_x[i] + w - 1] = vid.S_GRIDR
             ubyte n = formula.col_name(c, &tmp)
             x = vis_x[i] + (w - n) / 2
             vid.r_ch[x] = tmp[0]
@@ -349,12 +354,13 @@ sview {
             vid.r_col[x] = (vid.C_WHITE << 4) | vid.C_BLACK
         }
         ; row header
-        ubyte hbg = vid.C_LGRAY
+        k = (vid.C_BLACK << 4) | vid.C_GRAY
         if r >= s_r1 and r <= s_r2
-            hbg = vid.C_GRAY
-        for x in 0 to RHW - 1
-            vid.r_col[x] = hbg << 4
-        vid.r_sty[RHW - 1] = vid.S_GRIDB | vid.S_GRIDR
+            k = vid.C_RED << 4
+        for x in 0 to RHW - 1 {
+            vid.r_col[x] = k
+            vid.r_sty[x] = 0
+        }
         if r <= cells.MAXROW {
             uword s = conv.str_uw(r)
             ubyte n = strings.length(s)
@@ -366,11 +372,11 @@ sview {
             ubyte c = vis_col[i]
             ubyte bg = vid.C_WHITE
             if in_sel(r, c)
-                bg = vid.C_CYAN
+                bg = vid.C_LRED
             if pt_on and r >= pt_r1 and r <= pt_r2 and c >= pt_c1 and c <= pt_c2
                 bg = vid.C_LGREEN
             if r == cur_r and c == cur_c
-                bg = vid.C_YELLOW
+                bg = vid.C_RED
             for x in vis_x[i] to vis_x[i] + vis_w[i] - 1
                 vid.r_col[x] = (bg << 4) | vid.C_BLACK
             vid.r_sty[vis_x[i] + vis_w[i] - 1] = vid.S_GRIDB | vid.S_GRIDR
@@ -466,15 +472,15 @@ sview {
     sub draw_vscroll_cell(ubyte sr) {
         vid.r_ch[79] = 32
         vid.r_sty[79] = 0
-        vid.r_col[79] = vid.C_LGRAY << 4
+        vid.r_col[79] = vid.C_BLACK << 4
         if sr == 0 {
             vid.r_ch[79] = iso:'^'
-            vid.r_col[79] = vid.C_WHITE << 4
+            vid.r_col[79] = vid.C_RED
         } else if sr == GROWS - 1 {
             vid.r_ch[79] = iso:'v'
-            vid.r_col[79] = vid.C_WHITE << 4
+            vid.r_col[79] = vid.C_RED
         } else if sr == vthumb()
-            vid.r_col[79] = (vid.C_DGRAY << 4) | vid.C_DGRAY
+            vid.r_col[79] = vid.C_RED << 4
     }
 
     sub vthumb() -> ubyte {
@@ -489,15 +495,15 @@ sview {
         for x in 0 to 79 {
             vid.r_ch[x] = 32
             vid.r_sty[x] = 0
-            vid.r_col[x] = vid.C_LGRAY << 4
+            vid.r_col[x] = vid.C_BLACK << 4
         }
         vid.r_ch[RHW] = iso:'<'
-        vid.r_col[RHW] = vid.C_WHITE << 4
+        vid.r_col[RHW] = vid.C_RED
         vid.r_ch[78] = iso:'>'
-        vid.r_col[78] = vid.C_WHITE << 4
+        vid.r_col[78] = vid.C_RED
         ; thumb over 72 cells for columns 0..255
         ubyte t = RHW + 1 + lsb((leftcol as uword * 71) / 255)
-        vid.r_col[t] = (vid.C_DGRAY << 4) | vid.C_DGRAY
+        vid.r_col[t] = vid.C_RED << 4
         vid.render_run(HSCROLL, 0, 80)
     }
 
@@ -533,8 +539,9 @@ sview {
     ; ---------------- status bar ----------------
     str stat = iso:"                                 "
     sub draw_status() {
-        vid.fill(0, STATUS_ROW, 80, 0, vid.C_LGRAY)
-        put(1, STATUS_ROW, status_msg, 0, vid.C_LGRAY)
+        ; Sunset: cream on black; Quill (theme sprite) sits in columns 0-1
+        vid.fill(0, STATUS_ROW, 80, 0, vid.C_BLACK)
+        put(3, STATUS_ROW, status_msg, vid.C_WHITE, vid.C_BLACK)
         if not single() and not editing {
             ; SUM / COUNT of the selection, like the status bar of a desktop spreadsheet
             sel_norm()
@@ -550,15 +557,15 @@ sview {
             float sum = formula.result
             ubyte e = formula.everr
             uword cnt = formula.fcnt[0]
-            put(48, STATUS_ROW, iso:"Sum", vid.C_DGRAY, vid.C_LGRAY)
+            put(49, STATUS_ROW, iso:"Sum", vid.C_LGRAY, vid.C_BLACK)
             if e != 0
-                put(52, STATUS_ROW, formula.err_text(e), 0, vid.C_LGRAY)
+                put(53, STATUS_ROW, formula.err_text(e), vid.C_RED, vid.C_BLACK)
             else {
                 numfmt.format(sum, 0, 14)
-                put(52, STATUS_ROW, &numfmt.out, 0, vid.C_LGRAY)
+                put(53, STATUS_ROW, &numfmt.out, vid.C_YELLOW, vid.C_BLACK)
             }
-            put(67, STATUS_ROW, iso:"Count", vid.C_DGRAY, vid.C_LGRAY)
-            num(73, STATUS_ROW, cnt, 0, vid.C_LGRAY)
+            put(68, STATUS_ROW, iso:"Count", vid.C_LGRAY, vid.C_BLACK)
+            num(74, STATUS_ROW, cnt, vid.C_YELLOW, vid.C_BLACK)
         }
     }
 
@@ -605,6 +612,7 @@ sview {
     sub click() -> ubyte {
         ; 0 = nothing, 1 = click (mouse_cx/cy), 2 = Esc, other = key code + 2 (in last_key)
         sys.waitvsync()
+        theme.tick()                    ; Quill keeps blinking in dialogs
         if keyscript != 0 and @(keyscript) != 0 {
             ; scripted keys for the automated tests
             last_key = @(keyscript)

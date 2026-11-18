@@ -32,8 +32,11 @@ ui {
     const ubyte C_BLACK = 0
     const ubyte C_WHITE = 1
     const ubyte C_RED = 2
+    const ubyte C_CYAN = 3
+    const ubyte C_PURPLE = 4
     const ubyte C_BLUE = 6
     const ubyte C_YELLOW = 7
+    const ubyte C_ORANGE = 8
     const ubyte C_LRED = 10
     const ubyte C_DGRAY = 11
     const ubyte C_GRAY = 12
@@ -41,6 +44,7 @@ ui {
     const ubyte C_LBLUE = 14
     const ubyte C_LGRAY = 15
     const ubyte S_RAW = 8
+    const ubyte S_BOLD = 1
     const uword FONT_VRAM = $6000
 
     ; button ids (same as sview's)
@@ -93,35 +97,59 @@ ui {
         mn.vfill(col, row, n, fg, bg)
     }
 
+    ; Sunset icon faces by button id: file buttons pink/orange/teal, AutoSum pink, fx lavender,
+    ; the rest violet with cream glyphs; a toggle that is on is black on yellow
+    ubyte[27] face = [0, C_RED, C_ORANGE, C_CYAN, C_CYAN, C_GRAY, C_GRAY, C_GRAY, C_GRAY, C_GRAY,
+                      C_GRAY, C_GRAY, C_GRAY, C_GRAY, C_RED, C_RED, C_PURPLE, C_GRAY, C_GRAY, C_GRAY,
+                      C_GRAY, C_GRAY, C_GRAY, C_GRAY, C_GRAY, C_GRAY, C_GRAY]
+
     sub icon(ubyte col, ubyte row, ubyte k, ubyte id, bool active) {
-        ubyte bg = C_WHITE
+        ubyte f = face[id]
+        ubyte c = f << 4
         if active
-            bg = C_LBLUE
+            c = C_YELLOW << 4
+        else if f == C_GRAY
+            c |= C_WHITE
         @(mn.r_ch) = k * 2
         @(mn.r_ch + 1) = k * 2 + 1
         @(mn.r_sty) = S_RAW | $30
         @(mn.r_sty + 1) = S_RAW | $30
-        @(mn.r_col) = bg << 4
-        @(mn.r_col + 1) = bg << 4
+        @(mn.r_col) = c
+        @(mn.r_col + 1) = c
         mn.render_run(row, col, 2)
         mn.add_btn(col, row, id)
+    }
+
+    ; a dialog button: label (padded with spaces) between pill caps, black on yellow
+    sub button(ubyte x, ubyte y, uword label) {
+        mn.pill(x, y, label, C_BLACK, C_YELLOW, C_LGRAY)
+    }
+
+    ; a chip in the title bar: " text " on black
+    sub chip(ubyte x, uword s, ubyte fg) -> ubyte {
+        ubyte n = strings.length(s)
+        fill(x, 0, n + 2, fg, C_BLACK)
+        mn.vtext(x + 1, 0, s, S_BOLD, fg, C_BLACK)
+        return x + n + 2
     }
 
     ; ---------------- toolbars / title ----------------
     sub draw_toolbar() {
         mn.bt_n = 0
-        fill(0, 0, 80, C_WHITE, C_BLUE)
-        mn.put(1, 0, iso:"X16 SHEETS", C_YELLOW, C_BLUE)
-        mn.put(12, 0, iso:"-", C_WHITE, C_BLUE)
-        mn.put(14, 0, mn.filename, C_WHITE, C_BLUE)
+        ; Sunset title bar: stripes with black chips
+        mn.stripes(0, 0, 80)
+        void chip(1, iso:"X16 SHEETS", C_YELLOW)
+        ubyte x = chip(14, mn.filename, C_WHITE)
+        if x < 47
+            x = 47
         if mn.cloud_doc
-            mn.put(46, 0, iso:"[ownCloud]", C_LGREEN, C_BLUE)
+            x = chip(x, iso:"ownCloud", C_LGREEN) + 1
         if mn.modified
-            mn.put(57, 0, iso:"(modified)", C_LRED, C_BLUE)
+            void chip(x, iso:"modified", C_LRED)
         icon(77, 0, icons.I_QUIT, B_QUIT, false)
 
-        fill(0, 1, 80, 0, C_LGRAY)
-        fill(0, 2, 80, 0, C_LGRAY)
+        fill(0, 1, 80, 0, C_DGRAY)
+        fill(0, 2, 80, 0, C_DGRAY)
         icon(1, 1, icons.I_NEW, B_NEW, false)
         icon(4, 1, icons.I_OPEN, B_OPEN, false)
         icon(7, 1, icons.I_SAVE, B_SAVE, false)
@@ -153,10 +181,10 @@ ui {
         icon(32, 2, icons.I_DELCOL, B_DELCOL, false)
         icon(37, 2, icons.I_NARROW, B_NARROW, false)
         icon(40, 2, icons.I_WIDER, B_WIDER, false)
-        mn.put(50, 2, iso:"cells", C_DGRAY, C_LGRAY)
-        mn.num(56, 2, mn.nused, 0, C_LGRAY)
-        mn.put(62, 2, iso:"free", C_DGRAY, C_LGRAY)
-        mn.num(67, 2, mn.free_count(), 0, C_LGRAY)
+        mn.put(50, 2, iso:"cells", C_LGRAY, C_DGRAY)
+        mn.num(56, 2, mn.nused, C_WHITE, C_DGRAY)
+        mn.put(62, 2, iso:"free", C_LGRAY, C_DGRAY)
+        mn.num(67, 2, mn.free_count(), C_WHITE, C_DGRAY)
         mn.draw_fbar()
     }
 
@@ -214,10 +242,16 @@ ui {
         fill(x, y + h - 1, w, 0, C_BLACK)
     }
 
+    ; Sunset: warnings (bg RED) keep a pink title bar with cream text, the rest lavender with black
     sub title_box(ubyte x, ubyte y, ubyte w, ubyte h, uword title, ubyte bg) {
+        ubyte fg = C_WHITE
+        if bg != C_RED {
+            bg = C_PURPLE
+            fg = C_BLACK
+        }
         draw_box(x, y, w, h)
-        fill(x, y, w, C_WHITE, bg)
-        mn.put(x + 2, y, title, C_WHITE, bg)
+        fill(x, y, w, fg, bg)
+        mn.vtext(x + 2, y, title, S_BOLD, fg, bg)
     }
 
     sub dialog_input_e() -> bool {
@@ -230,8 +264,8 @@ ui {
         ubyte k
         title_box(16, 11, 48, 7, title, C_BLUE)
         mn.put(18, 13, iso:"Name:", 0, C_LGRAY)
-        mn.put(24, 16, iso:"[ OK ]", 0, C_WHITE)
-        mn.put(40, 16, iso:"[ Cancel ]", 0, C_WHITE)
+        button(24, 16, iso:" OK ")
+        button(40, 16, iso:" Cancel ")
         bool dirty = true
         mn.prev_btn = true
         repeat {
@@ -279,10 +313,11 @@ ui {
 
     sub yesno_e() -> bool {
         ubyte k
+        ubyte m = cx16.r0L              ; drawing clobbers r0
         title_box(18, 12, 44, 5, iso:"Please confirm", C_RED)
-        mn.put(20, 14, msgs[cx16.r0L], 0, C_LGRAY)
-        mn.put(24, 15, iso:"[ Yes ]", 0, C_WHITE)
-        mn.put(46, 15, iso:"[ No ]", 0, C_WHITE)
+        mn.put(20, 14, msgs[m], 0, C_LGRAY)
+        button(24, 15, iso:" Yes ")
+        button(46, 15, iso:" No ")
         mn.prev_btn = true
         repeat {
             k = mn.click()
@@ -305,9 +340,10 @@ ui {
     }
 
     sub message_e() {
+        ubyte m = cx16.r1L              ; drawing clobbers r0/r1
         title_box(14, 12, 52, 5, titles[cx16.r0L], C_BLUE)
-        mn.put(16, 14, msgs[cx16.r1L], 0, C_LGRAY)
-        mn.put(36, 15, iso:"[ OK ]", 0, C_WHITE)
+        mn.put(16, 14, msgs[m], 0, C_LGRAY)
+        button(36, 15, iso:" OK ")
         mn.prev_btn = true
         repeat {
             ubyte k = mn.click()
@@ -356,15 +392,16 @@ ui {
 
     ; ---------------- save conflict ----------------
     sub conflict_e() -> ubyte {
+        ubyte ex = cx16.r0L             ; drawing clobbers r0
         title_box(14, 11, 52, 7, iso:"Save conflict", C_RED)
         mn.put(16, 13, mn.nbuf, 0, C_LGRAY)
-        if cx16.r0L != 0
+        if ex != 0
             mn.put(16, 14, iso:"already exists on ownCloud.", 0, C_LGRAY)
         else
             mn.put(16, 14, iso:"was changed on ownCloud since you opened it.", 0, C_LGRAY)
-        mn.put(17, 16, iso:"[Overwrite]", 0, C_WHITE)
-        mn.put(32, 16, iso:"[New name]", 0, C_WHITE)
-        mn.put(47, 16, iso:"[ Cancel ]", 0, C_WHITE)
+        button(17, 16, iso:"Overwrite")
+        button(32, 16, iso:"New name")
+        button(47, 16, iso:" Cancel ")
         mn.prev_btn = true
         repeat {
             ubyte k = mn.click()

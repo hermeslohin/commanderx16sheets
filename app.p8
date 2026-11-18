@@ -8,6 +8,7 @@
 %import cells
 %import formula
 %import shlibs
+%import theme
 %import x16link_api
 
 app {
@@ -95,6 +96,8 @@ app {
         sview.put(0, 0, 0, 0, 0)
         sview.num(0, 0, 0, 0, 0)
         vid.fill(0, 0, 0, 0, 0)
+        theme.pill(0, 0, 0, 0, 0, 0)
+        theme.stripes(0, 0, 0)
     }
 
     sub run() {
@@ -106,15 +109,18 @@ app {
         vid.load_fonts()
         vid.gfx_init()
         shl.upload_icons()
+        theme.init()                    ; after the icons: its glyphs go to the same font slot
         cells.init()
         sview.set_filename(iso:"untitled.xlsx")
         sview.set_status(iso:"Welcome! Click a cell and type. Formulas start with =")
         sview.redraw_everything()
         while running {
             sys.waitvsync()
+            theme.tick()
             handle_keys()
             handle_mouse()
         }
+        theme.off()
         vid.gfx_off()
     }
 

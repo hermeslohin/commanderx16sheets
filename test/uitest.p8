@@ -82,6 +82,7 @@ main {
         vid.load_fonts()
         vid.gfx_init()
         shl.upload_icons()
+        theme.init()
         cells.init()
         sview.set_filename(iso:"untitled.xlsx")
         sview.redraw_everything()

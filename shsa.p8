@@ -33,7 +33,10 @@ main {
 
 sa {
     const ubyte C_WHITE = 1
+    const ubyte C_RED = 2
+    const ubyte C_PURPLE = 4
     const ubyte C_BLUE = 6
+    const ubyte C_YELLOW = 7
     const ubyte C_DGRAY = 11
     const ubyte C_LGRAY = 15
     const uword pickname = $0650    ; 64 bytes of golden RAM, shared with X16WPCL.BIN
@@ -245,8 +248,8 @@ sa {
             sty = 1                     ; bold
         }
         if i == bsel {
-            bg = C_BLUE
-            fg = C_WHITE
+            bg = C_RED
+            fg = 0
         }
         mn.vfill(BX + 2, y, BW - 4, fg, bg)
         mn.vtext(BX + 3, y, name, sty, fg, bg)
@@ -310,11 +313,11 @@ sa {
 
     sub draw_dialog() {
         draw_box(BX, BY, BW, 21)
-        mn.vfill(BX, BY, BW, C_WHITE, C_BLUE)
+        mn.vfill(BX, BY, BW, 0, C_PURPLE)
+        uword t = iso:"Save As on the SD card"
         if bcl
-            mn.put(BX + 2, BY, iso:"Save As to ownCloud", C_WHITE, C_BLUE)
-        else
-            mn.put(BX + 2, BY, iso:"Save As on the SD card", C_WHITE, C_BLUE)
+            t = iso:"Save As to ownCloud"
+        mn.vtext(BX + 2, BY, t, 1, 0, C_PURPLE)
         mn.put(BX + 2, BY + 2, iso:"Folder:", C_DGRAY, C_LGRAY)
         if bcl {
             lkut.scopy(iso:"/Documents/", &tmp, 72)
@@ -326,12 +329,12 @@ sa {
         if n > 34
             tp += n - 34
         mn.put(BX + 10, BY + 2, tp, 0, C_LGRAY)
-        mn.put(BX + 46, BY + 2, iso:"[ Up ]", 0, C_WHITE)
-        mn.put(BX + 53, BY + 2, iso:"[New folder]", 0, C_WHITE)
+        mn.pill(BX + 46, BY + 2, iso:" Up ", 0, C_YELLOW, C_LGRAY)
+        mn.pill(BX + 53, BY + 2, iso:"New folder", 0, C_YELLOW, C_LGRAY)
         mn.put(BX + 2, NY, iso:"Name:", 0, C_LGRAY)
         mn.put(BX + 2, HY, iso:"Double-click opens a folder  F7=new folder", C_DGRAY, C_LGRAY)
-        mn.put(BX + 46, HY, iso:"[ Save ]", 0, C_WHITE)
-        mn.put(BX + 56, HY, iso:"[Cancel]", 0, C_WHITE)
+        mn.pill(BX + 46, HY, iso:" Save ", 0, C_YELLOW, C_LGRAY)
+        mn.pill(BX + 56, HY, iso:"Cancel", 0, C_YELLOW, C_LGRAY)
         draw_name()
     }
 

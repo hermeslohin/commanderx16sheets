@@ -39,7 +39,9 @@ fl {
     const ubyte CONV_SHEET = 2
     const ubyte C_WHITE = 1
     const ubyte C_RED = 2
+    const ubyte C_PURPLE = 4
     const ubyte C_BLUE = 6
+    const ubyte C_YELLOW = 7
     const ubyte C_DGRAY = 11
     const ubyte C_GRAY = 12
     const ubyte C_LGRAY = 15
@@ -122,6 +124,8 @@ fl {
         mn.reset_view()
         mn.modified = false
         mn.set_status(load_msg[st])
+        if st == shl.ST_OK
+            mn.hop = 32              ; theme.cheer(): Quill hops
         if st == shl.ST_OK and shl.xlsx_lossy()
             mn.set_status(iso:"Loaded (some content could not be shown)")
         if st != shl.ST_OK and st != shl.ST_FULL {
@@ -199,6 +203,7 @@ fl {
             mn.set_filename(mn.nbuf)
             mn.modified = false
             mn.set_status(iso:"Saved as XLSX")
+            mn.hop = 32              ; theme.cheer(): Quill hops
         } else
             mn.set_status(iso:"SAVE FAILED")
         mn.redraw_everything()
@@ -247,8 +252,8 @@ fl {
         if not p_fetch(i)
             fg = C_GRAY
         if i == p_sel {
-            bg = C_BLUE
-            fg = C_WHITE
+            bg = C_RED
+            fg = 0
             mn.vfill(PX + 1, y, PW - 2, fg, bg)
         }
         mn.vtext(PX + 2, y, &prow, 0, fg, bg)
@@ -301,12 +306,13 @@ fl {
         ubyte lastclick = 255
         ubyte lastt
         draw_box(PX, PY, PW, PROWS + 6)
-        mn.vfill(PX, PY, PW, C_WHITE, C_BLUE)
-        mn.put(PX + 2, PY, title, C_WHITE, C_BLUE)
-        mn.put(PX + 2, PY + 2, header, C_DGRAY, C_LGRAY)
+        mn.vfill(PX, PY, PW, 0, C_PURPLE)
+        mn.vtext(PX + 2, PY, title, 1, 0, C_PURPLE)
+        mn.vfill(PX + 1, PY + 2, PW - 2, 0, C_YELLOW)
+        mn.put(PX + 2, PY + 2, header, 0, C_YELLOW)
         mn.put(PX + 17, PY + PROWS + 4, iso:"Enter=open  Esc=cancel", C_DGRAY, C_LGRAY)
-        mn.put(PX + PW - 22, PY + PROWS + 4, iso:"[ Open ]", 0, C_WHITE)
-        mn.put(PX + PW - 12, PY + PROWS + 4, iso:"[Cancel]", 0, C_WHITE)
+        mn.pill(PX + PW - 22, PY + PROWS + 4, iso:" Open ", 0, C_YELLOW, C_LGRAY)
+        mn.pill(PX + PW - 12, PY + PROWS + 4, iso:"Cancel", 0, C_YELLOW, C_LGRAY)
         p_list()
         if p_total == 0
             mn.put(PX + 2, LROW, iso:"(no spreadsheets found)", C_DGRAY, C_WHITE)
@@ -531,6 +537,7 @@ fl {
                 mn.cloud_doc = true
                 mn.modified = false
                 mn.set_status(iso:"Saved to ownCloud")
+                mn.hop = 32              ; theme.cheer(): Quill hops
                 break
             }
             if st != lkapi.S_CONFLICT {

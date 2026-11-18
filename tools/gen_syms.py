@@ -75,6 +75,8 @@ SUBS = [
     ("recalc", "formula", "recalc", [], None),
     ("fout_rec", "numfmt", "fout_rec", [], None),
     ("disk_delete", "diskio", "delete", [("filenameptr", W)], None),
+    ("pill", "theme", "pill", [("col", B), ("row", B), ("label", W), ("fg", B), ("face", B), ("bg", B)], None),
+    ("stripes", "theme", "stripes", [("col", B), ("row", B), ("n", B)], None),
 ]
 # (alias, block, var, kind)  kind: ubyte/byte/uword/bool or addr (= its address as a const)
 VARS = [
@@ -111,6 +113,7 @@ VARS = [
     ("tmpname", "app", "tmpname", "addr"),
     ("clip_cut", "app", "clip_cut", "bool"),
     ("cloud_ok", "app", "cloud_ok", "bool"),
+    ("hop", "theme", "hop", "ubyte"),  # = 32: Quill cheers (theme.cheer())
 ]
 
 
