@@ -5,7 +5,7 @@ PROG8C ?= java -jar $(HOME)/prog8c.jar
 export PROG8C
 EMU ?= x16emu
 
-.PHONY: all sd run test clean
+.PHONY: all sd run run-modem test cloudtest clean
 all:
 	./build.sh
 
@@ -15,6 +15,14 @@ sd:
 run: all
 	mkdir -p build/run && ./build.sh build/run > /dev/null
 	cd build/run && $(EMU) -scale 2 -prg X16SHEETS.PRG -run
+
+# same, with the emulator's virtual modem for ownCloud; copies the hub key in (KEY=path to override)
+KEY ?= $(HOME)/Downloads/X16LINK.KEY
+run-modem: all
+	mkdir -p build/run && ./build.sh build/run > /dev/null
+	@if [ -f "$(KEY)" ]; then cp "$(KEY)" build/run/X16LINK.KEY; \
+	 elif [ ! -f build/run/X16LINK.KEY ]; then echo "warning: no X16LINK.KEY (set KEY=...)"; fi
+	cd build/run && $(EMU) -scale 2 -uart1 ximodem -prg X16SHEETS.PRG -run
 
 # formula engine (headless) + the whole UI (headless) ; `make cloudtest` needs ../x16-office-hub
 test:

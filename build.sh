@@ -17,7 +17,7 @@ python3 "$HERE/tools/gen_icons.py" > /dev/null
 run "$B/x16link.log" $P8 -out "$B" "$LIB/x16link.p8"
 run "$B/x16docs.log" $P8 -out "$B" "$LIB/x16docs.p8"
 run "$B/x16sheets.log" $P8 -out "$B" "$HERE/x16sheets.p8"
-for lb in shui:63 shops:57 shfile:62 shxw:59 shxr:58; do
+for lb in shui:63 shops:57 shfile:62 shxw:59 shxr:58 shsa:55; do
   name="${lb%%:*}"; bank="${lb##*:}"
   python3 "$HERE/tools/gen_syms.py" "$B" "$bank" "$B/mainsyms_$bank.p8" > /dev/null
   run "$B/$name.log" $P8 -srcdirs "$B" -out "$B" "$HERE/$name.p8"
@@ -25,6 +25,6 @@ done
 if [ $# -ge 1 ]; then
   SD="$1"; mkdir -p "$SD"
   cp "$B/x16sheets.prg" "$SD/X16SHEETS.PRG"
-  for f in shui shops shfile shxw shxr x16link x16docs; do cp "$B/$f.bin" "$SD/$(echo $f | tr a-z A-Z).BIN"; done
+  for f in shui shops shfile shxw shxr shsa x16link x16docs; do cp "$B/$f.bin" "$SD/$(echo $f | tr a-z A-Z).BIN"; done
   echo "copied to $SD"
 fi

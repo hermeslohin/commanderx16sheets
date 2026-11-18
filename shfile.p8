@@ -5,6 +5,9 @@
 ;   Save: write the XLSX to a temp file, upload it with conv 2 (the hub stores a normal compressed
 ;         .xlsx, or a .csv); create-only, or overwrite exactly the version we opened. A conflict asks
 ;         Overwrite / New name / Cancel.
+; Save As (SD card and ownCloud) goes through the folder browser SHSA.BIN (bank 55). On the SD card it
+; changes the DOS current directory, which then is where the sheet lives; X16LINK.KEY is read with an
+; absolute path to the program's folder.
 ; Buffers handed to the X16Link libraries (banks 60/61) must be visible from there: they are in the
 ; free part of golden RAM after XB ($0608-$06F3), like X16 Write's cloud library.
 
@@ -176,11 +179,18 @@ fl {
         }
         if ask or strings.startswith(mn.filename, iso:"untitled") {
             copy(mn.filename, mn.nbuf, 30)
-            bool ok = shl.dialog_input(shl.T_SAVE_SD, mn.nbuf, 28)
-            mn.redraw_everything()
-            if not ok
+            if not shl.sa_browse(0) {
+                shl.sa_cd_back()            ; cancelled: back to where we were
+                mn.set_status(iso:"Save cancelled")
+                mn.redraw_everything()
                 return
-            ensure_ext()
+            }
+            if shl.sa_exists(mn.nbuf) {
+                bool yes = shl.yesno(shl.M_REPLACE)
+                mn.redraw_everything()
+                if not yes
+                    return
+            }
         } else
             copy(mn.filename, mn.nbuf, 30)
         status(iso:"Saving...")
@@ -400,7 +410,7 @@ fl {
 
     sub online() -> bool {
         status(iso:"Connecting to the hub...")
-        copy(iso:"X16LINK.KEY", pickname, 20)
+        shl.sa_key_path()               ; pickname = "//<program folder>/:X16LINK.KEY"
         ubyte st = lkapi.load_key(pickname)
         if st == 0
             st = lkapi.connect()
@@ -455,83 +465,101 @@ fl {
         mn.redraw_everything()
     }
 
+    ; ownCloud Save As browser, starting in the folder of the name in pickname; the full
+    ; (Documents-relative) name ends up in pickname
     sub ask_name() -> bool {
-        bool ok = shl.dialog_input(shl.T_SAVE_OC, mn.nbuf, 40)
-        mn.redraw_everything()
-        if ok
-            ensure_ext()
-        return ok and @(mn.nbuf) != 0
+        return shl.sa_browse(1)
     }
 
     sub same_as_current() -> bool {
-        return strings.compare(mn.nbuf, &cname) == 0
+        return strings.compare(pickname, &cname) == 0
+    }
+
+    sub leaf(uword p) -> uword {
+        uword l = p
+        while @(p) != 0 {
+            if @(p) == iso:'/'
+                l = p + 1
+            p++
+        }
+        return l
     }
 
     sub cl_save(bool ask) {
         ubyte mode = 0
+        if not online() {
+            mn.redraw_everything()
+            return
+        }
         if ask or not is_cloud() {
-            if is_cloud()
-                copy(&cname, mn.nbuf, 40)
-            else
-                copy(mn.filename, mn.nbuf, 40)
-            if not ask_name()
+            ; start in the sheet's own folder with its name
+            @(pickname) = 0
+            if is_cloud() {
+                copy(&cname, pickname, 63)
+                copy(leaf(&cname), mn.nbuf, 30)
+            } else
+                copy(mn.filename, mn.nbuf, 30)
+            if not ask_name() {
+                done()
+                mn.set_status(iso:"Save cancelled")
+                mn.redraw_everything()
                 return
+            }
         } else
-            copy(&cname, mn.nbuf, 40)
+            copy(&cname, pickname, 63)
         status(iso:"Saving...")
         if not shl.xlsx_save(mn.tmpname) {
+            done()
             mn.set_status(iso:"SAVE FAILED (temp file)")
             mn.redraw_everything()
             return
         }
-        if online() {
-            @(setag) = 0
-            if is_cloud() and same_as_current() {
-                mode = 1                    ; overwrite exactly the version we have
-                copy(&cetag, setag, 47)
+        @(setag) = 0
+        if is_cloud() and same_as_current() {
+            mode = 1                    ; overwrite exactly the version we have
+            copy(&cetag, setag, 47)
+        }
+        lkapi.set_etag(setag)
+        repeat {
+            status(iso:"Uploading...")
+            ubyte st = lkapi.upload(mn.tmpname, pickname, mode, CONV_SHEET)
+            if st == 0 {
+                lkapi.get_etag(setag, 48)
+                copy(setag, &cetag, 47)
+                copy(pickname, &cname, 63)
+                mn.set_filename(leaf(&cname))
+                mn.cloud_doc = true
+                mn.modified = false
+                mn.set_status(iso:"Saved to ownCloud")
+                break
             }
-            lkapi.set_etag(setag)
-            repeat {
-                status(iso:"Uploading...")
-                ubyte st = lkapi.upload(mn.tmpname, mn.nbuf, mode, CONV_SHEET)
-                if st == 0 {
-                    lkapi.get_etag(setag, 48)
-                    copy(setag, &cetag, 47)
-                    copy(mn.nbuf, &cname, 63)
-                    mn.set_filename(mn.nbuf)
-                    mn.cloud_doc = true
-                    mn.modified = false
-                    mn.set_status(iso:"Saved to ownCloud")
-                    break
-                }
-                if st != lkapi.S_CONFLICT {
-                    fail(iso:"Save failed")
-                    break
-                }
-                ubyte kind = lkapi.conflict(setag, 48)
-                ubyte ex = 0
-                if kind == 1
-                    ex = 1
-                ubyte choice = shl.conflict(ex)
-                mn.redraw_everything()
-                if choice == 0 {
-                    mode = 1
-                    lkapi.set_etag(setag)   ; overwrite the version the hub just told us about
-                } else if choice == 1 {
-                    if not ask_name() {
-                        mn.set_status(iso:"Save cancelled")
-                        break
-                    }
-                    mode = 0
-                    @(setag) = 0
-                    lkapi.set_etag(setag)
-                } else {
+            if st != lkapi.S_CONFLICT {
+                fail(iso:"Save failed")
+                break
+            }
+            ubyte kind = lkapi.conflict(setag, 48)
+            ubyte ex = 0
+            if kind == 1
+                ex = 1
+            ubyte choice = shl.conflict(ex)
+            mn.redraw_everything()
+            if choice == 0 {
+                mode = 1
+                lkapi.set_etag(setag)   ; overwrite the version the hub just told us about
+            } else if choice == 1 {
+                if not ask_name() {
                     mn.set_status(iso:"Save cancelled")
                     break
                 }
+                mode = 0
+                @(setag) = 0
+                lkapi.set_etag(setag)
+            } else {
+                mn.set_status(iso:"Save cancelled")
+                break
             }
-            done()
         }
+        done()
         mn.disk_delete(mn.tmpname)
         mn.redraw_everything()
     }

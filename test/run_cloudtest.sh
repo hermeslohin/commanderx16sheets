@@ -9,7 +9,7 @@ B="${BUILD:-$HERE/build/cloudtest}"
 rm -rf "$B/sd" "$B/out"; mkdir -p "$B/sd" "$B/out" "$B/ximodem"
 P8="${PROG8C:-java -jar $HOME/prog8c.jar} -target cx16 -srcdirs $HERE/lib/x16link -srcdirs $HERE"
 $P8 -out "$B" "$HERE/test/cloudtest.p8" > "$B/cloudtest.log" 2>&1 || { cat "$B/cloudtest.log"; exit 1; }
-for lb in shui:63 shops:57 shfile:62 shxw:59 shxr:58; do
+for lb in shui:63 shops:57 shfile:62 shxw:59 shxr:58 shsa:55; do
   name="${lb%%:*}"; bank="${lb##*:}"
   python3 "$HERE/tools/gen_syms.py" "$B" "$bank" "$B/mainsyms_$bank.p8" cloudtest > /dev/null
   $P8 -srcdirs "$B" -out "$B" "$HERE/$name.p8" > "$B/$name.log" 2>&1 || { cat "$B/$name.log"; exit 1; }

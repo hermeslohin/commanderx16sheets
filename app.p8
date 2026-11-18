@@ -31,11 +31,11 @@ app {
     str pcttxt = iso:"Transferring    %  "
 
     ; load the bank libraries; false (with a message on the text screen) if one is missing
-    str[] libnames = [iso:"SHUI.BIN", iso:"SHOPS.BIN", iso:"SHFILE.BIN", iso:"SHXW.BIN", iso:"SHXR.BIN"]
-    ubyte[] libbanks = [shl.UI, shl.OPS, shl.FILE, shl.XW, shl.XR]
+    str[] libnames = [iso:"SHUI.BIN", iso:"SHOPS.BIN", iso:"SHFILE.BIN", iso:"SHXW.BIN", iso:"SHXR.BIN", iso:"SHSA.BIN"]
+    ubyte[] libbanks = [shl.UI, shl.OPS, shl.FILE, shl.XW, shl.XR, shl.SA]
     sub load_libs() -> bool {
         ubyte i
-        for i in 0 to 4 {
+        for i in 0 to 5 {
             cx16.rambank(libbanks[i])
             if diskio.load_raw(libnames[i], $a000) == 0 {
                 txt.print(iso:"missing ")
@@ -49,8 +49,9 @@ app {
         shl.file_init()
         shl.xw_init()
         shl.xr_init()
+        shl.sa_init()
         uword chk = &vid.render_run
-        if not (shl.ui_setup(chk) and shl.ops_setup(chk) and shl.file_setup(chk) and shl.xw_setup(chk) and shl.xr_setup(chk)) {
+        if not (shl.ui_setup(chk) and shl.ops_setup(chk) and shl.file_setup(chk) and shl.xw_setup(chk) and shl.xr_setup(chk) and shl.sa_setup(chk)) {
             txt.print(iso:"the .BIN files don't match X16SHEETS.PRG\r")
             return false
         }

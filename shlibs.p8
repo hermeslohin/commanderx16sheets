@@ -8,6 +8,7 @@
 ;   bank 59 SHXW.BIN    XLSX writer
 ;   bank 62 SHFILE.BIN  New / Open / Save, SD card picker, ownCloud (X16Link)
 ;   bank 63 SHUI.BIN    toolbars, tool tips, dialogs, menus
+;   bank 55 SHSA.BIN    Save As folder browser (SD card and ownCloud)
 
 shl {
     %option ignore_unused
@@ -16,6 +17,7 @@ shl {
     const ubyte XW = 59
     const ubyte FILE = 62
     const ubyte UI = 63
+    const ubyte SA = 55
 
     ; ---- SHUI (63)
     extsub @bank UI $A000 = ui_init() clobbers(A, X, Y)
@@ -34,9 +36,11 @@ shl {
     const ubyte T_OPEN_SD = 1
     const ubyte T_SAVE_OC = 2
     const ubyte T_SHEETFULL = 3
+    const ubyte T_NEWFOLDER = 4
     const ubyte M_QUIT = 0
     const ubyte M_DISCARD = 1
     const ubyte M_FULL = 2
+    const ubyte M_REPLACE = 3
     const ubyte MENU_OPEN = 0
     const ubyte MENU_SAVE = 1
     const ubyte MENU_FX = 2
@@ -47,6 +51,14 @@ shl {
     extsub @bank FILE $A006 = new_sheet() clobbers(A, X, Y)
     extsub @bank FILE $A009 = open_sheet() clobbers(A, X, Y)
     extsub @bank FILE $A00C = save_sheet(ubyte ask @R0) clobbers(A, X, Y)
+
+    ; ---- SHSA (55)
+    extsub @bank SA $A000 = sa_init() clobbers(A, X, Y)
+    extsub @bank SA $A003 = sa_setup(uword check @R0) clobbers(X, Y) -> bool @A
+    extsub @bank SA $A006 = sa_browse(ubyte cl @R0) clobbers(X, Y) -> bool @A
+    extsub @bank SA $A009 = sa_key_path() clobbers(A, X, Y)
+    extsub @bank SA $A00C = sa_exists(uword name @R0) clobbers(X, Y) -> bool @A
+    extsub @bank SA $A00F = sa_cd_back() clobbers(A, X, Y)
 
     ; ---- SHXW (59)
     extsub @bank XW $A000 = xw_init() clobbers(A, X, Y)

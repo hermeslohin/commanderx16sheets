@@ -202,9 +202,9 @@ ui {
 
     ; ---------------- dialogs ----------------
     uword[] titles = [iso:"Save XLSX on the SD card", iso:"Open XLSX from the SD card",
-                      iso:"Save As to ownCloud (Documents/, .xlsx or .csv)", iso:"Sheet full"]
+                      iso:"Save As to ownCloud (Documents/, .xlsx or .csv)", iso:"Sheet full", iso:"New folder name"]
     uword[] msgs = [iso:"Quit without saving?", iso:"Discard the current sheet?",
-                    iso:"No room for more cells (see README)."]
+                    iso:"No room for more cells (see README).", iso:"Replace the existing file?"]
 
     sub draw_box(ubyte x, ubyte y, ubyte w, ubyte h) {
         ubyte r

@@ -1,10 +1,10 @@
 ; cells.p8 - the sheet's cell store in banked ("high") RAM.
 ;
 ;   hash index : RAM banks 1..4    16384 slots x 2 bytes (record index + 1; 0 = empty, $ffff = deleted)
-;   records    : RAM banks 5..55   128 records x 64 bytes per bank = 6528 cells on a 512 KB X16,
+;   records    : RAM banks 5..54   128 records x 64 bytes per bank = 6400 cells on a 512 KB X16,
 ;                + banks 64..      on bigger machines (up to 12288 records in all)
 ;   bank 56    : used-row bitmap (xlsx writer)
-;   banks 57-59, 62, 63: X16 Sheets' code libraries; 60/61: X16Link libraries.
+;   banks 55, 57-59, 62, 63: X16 Sheets' code libraries; 60/61: X16Link libraries.
 ;
 ; A record holds one cell: position, type, style, cached value (5-byte float) and up to 50 bytes of
 ; text (the text itself, or a formula without its leading '='). Clipboard cells are records too
@@ -24,7 +24,7 @@ cells {
     const ubyte HBANK = 1
     const uword HMASK = $3fff
     const ubyte PBANK = 5
-    const ubyte PB_LOW = 51             ; banks 5..55
+    const ubyte PB_LOW = 50             ; banks 5..54 (55 is SHSA.BIN, the Save As browser)
     const ubyte ROWBANK = 56
     const uword MAXRECS = 12288
 
@@ -92,7 +92,7 @@ cells {
     }
 
     ; record index -> address in $a000-$bfff, with its RAM bank selected (hot path: assembly)
-    ;   bank k = idx >> 7 -> 5 + k (k < 51) or 64 + k - 51,  address = $a000 + (idx & 127) * 64
+    ;   bank k = idx >> 7 -> 5 + k (k < 50) or 64 + k - 50,  address = $a000 + (idx & 127) * 64
     asmsub rec_ptr(uword idx @AY) clobbers(X) -> uword @AY {
         %asm {{
             sty  P8ZP_SCRATCH_B1

@@ -9,7 +9,7 @@ Everything lands in `build/`. `make sd SD=<dir>` copies what goes on the SD card
 | File | What |
 |---|---|
 | `X16SHEETS.PRG` | the program (main RAM) |
-| `SHUI.BIN` `SHOPS.BIN` `SHFILE.BIN` `SHXW.BIN` `SHXR.BIN` | its code libraries (RAM banks 63, 57, 62, 59, 58) - required |
+| `SHUI.BIN` `SHOPS.BIN` `SHFILE.BIN` `SHXW.BIN` `SHXR.BIN` `SHSA.BIN` | its code libraries (RAM banks 63, 57, 62, 59, 58, 55) - required |
 | `X16LINK.BIN` `X16DOCS.BIN` | X16Link libraries (banks 60/61) - only for ownCloud |
 | `X16LINK.KEY` | this X16's hub key - only for ownCloud (same file X16 Write uses) |
 
@@ -54,6 +54,12 @@ Narrower, Wider. Formula bar: cell name, Cancel (X), Enter (tick), Insert functi
 * **Open / Save As** ask first: **1** = SD card, **2** = ownCloud (the menu only appears when the
   X16Link files are on the SD card). The SD card Open shows a picker of `*.xlsx` in the current
   directory (double-click or Enter).
+* **Save As** (SD card and ownCloud) is a folder browser: double-click a folder (or arrows + Enter)
+  to open it, `..` / [ Up ] to go up, [New folder] or **F7** to make one, click a file to take its
+  name, type a name, Enter. On the SD card opening a folder changes the DOS current directory, so the
+  sheet (and the SD Open picker) then work there; an existing file is replaced only after a question.
+  On ownCloud it shows one folder of `Documents/` at a time. `X16LINK.KEY` is always read from the
+  program's own folder. (SHSA.BIN, the same dialog as X16 Write's.)
 * Files are `.xlsx`: stored (uncompressed) ZIP, one worksheet, inline strings, 32 fixed styles -
   see [SHEETFMT.md](SHEETFMT.md). Excel, LibreOffice and ownCloud open them as they are.
   `.xlsx` files written by other programs are compressed: open those **through ownCloud**, where
@@ -72,10 +78,10 @@ The cells live in banked RAM, so main RAM only holds code:
 | RAM banks | |
 |---|---|
 | 1-4 | hash index (16384 slots) |
-| 5-55 | cell records, 64 bytes each: **6528 cells** on a 512 KB X16 |
+| 5-54 | cell records, 64 bytes each: **6400 cells** on a 512 KB X16 |
 | 64-255 | more records on bigger machines, up to **12288 cells** (2 MB) |
 | 56 | used-row bitmap (saving), SD file names (picker) |
-| 57-59, 62, 63 | X16 Sheets code libraries |
+| 55, 57-59, 62, 63 | X16 Sheets code libraries (55 = SHSA.BIN, the Save As browser) |
 | 60, 61 | X16Link libraries |
 
 Sheet size: columns A-IV (256), rows 1-9999. Texts up to 50 characters, formulas up to 46.
@@ -95,7 +101,7 @@ reference, reported in the status bar). Opening a file recalculates everything o
 | `formula.p8` | evaluator (iterative shunting-yard), reference rewriting, recalculation |
 | `numfmt.p8` | number display formats |
 | `vid.p8` | X16 Write's 80x30 bitmap text renderer + grid lines |
-| `shui.p8` `shops.p8` `shfile.p8` `shxw.p8` `shxr.p8` | the bank libraries (see `shlibs.p8`) |
+| `shui.p8` `shops.p8` `shfile.p8` `shxw.p8` `shxr.p8` `shsa.p8` | the bank libraries (see `shlibs.p8`) |
 | `tools/gen_syms.py` | generates each library's view of the main program (like X16 Write's `gen_wpsyms.py`) |
 | `tools/gen_icons.py` | toolbar icons (the first 13 are X16 Write's) |
 | `lib/x16link/` | vendored X16Link client library (from x16-office-hub) |

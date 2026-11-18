@@ -204,6 +204,22 @@ main {
         txt.print(sview.filename)
         txt.nl()
         val(6, 2, 90.98, iso:"picker-opened C6")
+        ; Save As with folders: F7 = new folder SUBDIR (the only folder: row 0), Up + Enter opens it,
+        ; replace the name, Enter. The sheet then lives in /SUBDIR (the DOS current directory)
+        sview.modified = true
+        sview.keyscript = iso:"\x88SUBDIR\r\x91\r\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14\x14INSUB\r"
+        shl.save_sheet(1)
+        txt.print(iso:"save as in a new folder -> ")
+        txt.print(sview.filename)
+        txt.print(iso:" in ")
+        txt.print(diskio.curdir())
+        if strings.compare(sview.filename, iso:"INSUB.xlsx") == 0 and not sview.modified and strings.compare(diskio.curdir(), iso:"/SUBDIR") == 0
+            txt.print(iso:"  PASS\r")
+        else {
+            txt.print(iso:"  FAIL\r")
+            fails++
+        }
+        diskio.chdir(iso:"/")
         app.select(2, 0, false)
         app.select(6, 3, true)
         sview.redraw_everything()
