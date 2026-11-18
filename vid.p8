@@ -220,35 +220,54 @@ vid {
         composing = false
     }
 
+    ; Draws the collected row. render_run() calls this when drawing moves on to another row, while
+    ; r_* already holds the caller's next cells: so each run of collected cells is swapped into r_*,
+    ; drawn, and swapped back. draw_run() doesn't change r_*, so that restores the caller's cells.
     sub comp_flush() {
         if comp_row == 255
             return
         ubyte obank = cx16.getrambank()
         ubyte i = 0
         ubyte j
-        ubyte k
         while i < 80 {
             cx16.rambank(S_BANK)
-            if @(s_set + i) == 0 {
+            j = i
+            while j < 80 and @(s_set + j) != 0 {
+                @(s_set + j) = 0
+                j++
+            }
+            if j == i {
                 i++
                 continue
             }
-            j = i
-            k = 0
-            while j < 80 and @(s_set + j) != 0 {
-                r_ch[k] = @(s_ch + j)
-                r_sty[k] = @(s_sty + j)
-                r_col[k] = @(s_col + j)
-                @(s_set + j) = 0
-                j++
-                k++
-            }
+            comp_swap(i, j)
             cx16.rambank(obank)
-            draw_run(comp_row, i, k)
+            draw_run(comp_row, i, j - i)
+            cx16.rambank(S_BANK)
+            comp_swap(i, j)
             i = j
         }
         cx16.rambank(obank)
         comp_row = 255
+    }
+
+    ; swap collected cells a..b-1 with r_*[0..b-a-1] (S_BANK mapped)
+    sub comp_swap(ubyte a, ubyte b) {
+        ubyte k = 0
+        ubyte t
+        while a < b {
+            t = r_ch[k]
+            r_ch[k] = @(s_ch + a)
+            @(s_ch + a) = t
+            t = r_sty[k]
+            r_sty[k] = @(s_sty + a)
+            @(s_sty + a) = t
+            t = r_col[k]
+            r_col[k] = @(s_col + a)
+            @(s_col + a) = t
+            a++
+            k++
+        }
     }
 
     ; draws the first n cells of r_ch/r_sty/r_col at cell (col0,row) (collects them in compose mode)
