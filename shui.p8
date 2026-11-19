@@ -23,6 +23,7 @@ main {
         ui.menu_e,          ; $A015  r0L = x, r1L = y, r2L = which -> A index / 255
         ui.conflict_e,      ; $A018  r0L = 1 exists / 0 changed -> A 0 overwrite 1 new name 2 cancel
         ui.upload_icons,    ; $A01B
+        ui.sa_frame,        ; $A01E  r0L = 1 ownCloud / 0 SD card: SHSA's Save As dialog frame
     )
     sub start() {
     }
@@ -90,26 +91,69 @@ ui {
             for r in 0 to 7
                 cx16.VERA_DATA0 = icons.ic_lo[k * 8 + r]
         }
+        ; the built-in (Sunset Arcade) theme glyphs, codes 240..255: a theme file replaces them,
+        ; without theme files these are used (stripe, star, twinkle, pill caps; the rest blank)
+        cx16.vaddr(1, FONT_VRAM + 3 * 2048 + 240 * 8, 0, 1)
+        for k in 0 to 127 {
+            r = 0
+            if k < len(sunset_gl)
+                r = sunset_gl[k]
+            cx16.VERA_DATA0 = r
+        }
         sys.clear_irqd()
     }
+    ubyte[40] sunset_gl = [$ff, $ff, $ff, $dd, $aa, $44, $00, $00,     ; 240 stripe
+                           $00, $00, $00, $08, $00, $00, $00, $00,     ; 241 star
+                           $00, $10, $10, $7c, $10, $10, $00, $00,     ; 242 twinkle
+                           $0f, $3f, $7f, $7f, $7f, $7f, $3f, $0f,     ; 243 theme.G_LCAP
+                           $f0, $fc, $fe, $fe, $fe, $fe, $fc, $f0]     ; 244 theme.G_RCAP
 
     sub fill(ubyte col, ubyte row, ubyte n, ubyte fg, ubyte bg) {
         mn.vfill(col, row, n, fg, bg)
     }
 
-    ; Sunset icon faces by button id: file buttons pink/orange/teal, AutoSum pink, fx lavender,
-    ; the rest violet with cream glyphs; a toggle that is on is black on yellow
-    ubyte[27] face = [0, C_RED, C_ORANGE, C_CYAN, C_CYAN, C_GRAY, C_GRAY, C_GRAY, C_GRAY, C_GRAY,
-                      C_GRAY, C_GRAY, C_GRAY, C_GRAY, C_RED, C_RED, C_PURPLE, C_GRAY, C_GRAY, C_GRAY,
-                      C_GRAY, C_GRAY, C_GRAY, C_GRAY, C_GRAY, C_GRAY, C_GRAY]
+    ; ---- theme roles (theme.p8's rl[] in main RAM; the same R_ numbers) ----
+    const ubyte R_DESK = 0
+    const ubyte R_TTL_NAME = 6
+    const ubyte R_TTL_TXT = 7
+    const ubyte R_TTL_WARN = 8
+    const ubyte R_QUIT = 9
+    const ubyte R_TOOL = 10
+    const ubyte R_BTN = 11
+    const ubyte R_BTN_ON = 12
+    const ubyte R_BTN_1 = 14
+    const ubyte R_BTN_2 = 15
+    const ubyte R_BTN_3 = 16
+    const ubyte R_BAR_DIM = 27
+    const ubyte R_DLG = 50
+    const ubyte R_DLG_TTL = 51
+    const ubyte R_DLG_WARN = 52
+    const ubyte R_DLG_BTN = 53
+    const ubyte R_DLG_EDGE = 54
+    const ubyte R_CHIP_OK = 60
+
+    sub role(ubyte r) -> ubyte {
+        return @(mn.theme_rl + r)
+    }
+
+    ; is palette colour c dark (light text goes on it)? ink, purple, blue, brown, dark grey
+    sub dark(ubyte c) -> bool {
+        return c == 0 or c == 4 or c == 6 or c == 9 or c == C_DGRAY
+    }
+
+    ; icon faces by button id, as theme roles: New and AutoSum accent 1, Open accent 2, Save and
+    ; Save As accent 3, Quit its own, fx (0) a lavender face with a black glyph, the rest normal;
+    ; a toggle that is on has the "on" colours
+    ubyte[27] face = [0, R_BTN_1, R_BTN_2, R_BTN_3, R_BTN_3, R_BTN, R_BTN, R_BTN, R_BTN, R_BTN,
+                      R_BTN, R_BTN, R_BTN, R_BTN, R_QUIT, R_BTN_1, 0, R_BTN, R_BTN, R_BTN,
+                      R_BTN, R_BTN, R_BTN, R_BTN, R_BTN, R_BTN, R_BTN]
 
     sub icon(ubyte col, ubyte row, ubyte k, ubyte id, bool active) {
-        ubyte f = face[id]
-        ubyte c = f << 4
+        ubyte c = C_PURPLE << 4
+        if face[id] != 0
+            c = role(face[id])
         if active
-            c = C_YELLOW << 4
-        else if f == C_GRAY
-            c |= C_WHITE
+            c = role(R_BTN_ON)
         @(mn.r_ch) = k * 2
         @(mn.r_ch + 1) = k * 2 + 1
         @(mn.r_sty) = S_RAW | $30
@@ -120,16 +164,28 @@ ui {
         mn.add_btn(col, row, id)
     }
 
-    ; a dialog button: label (padded with spaces) between pill caps, black on yellow
+    ; a dialog button: label (padded with spaces) between pill caps, in the theme's button colours
     sub button(ubyte x, ubyte y, uword label) {
-        mn.pill(x, y, label, C_BLACK, C_YELLOW, C_LGRAY)
+        ubyte k = role(R_DLG_BTN)
+        mn.pill(x, y, label, k & 15, k >> 4, role(R_DLG) >> 4)
     }
 
-    ; a chip in the title bar: " text " on black
-    sub chip(ubyte x, uword s, ubyte fg) -> ubyte {
+    ; dialog body text
+    sub say(ubyte x, ubyte y, uword s) {
+        ubyte k = role(R_DLG)
+        mn.put(x, y, s, k & 15, k >> 4)
+    }
+
+    ; a hint on the dialog body
+    sub hint(ubyte x, ubyte y, uword s) {
+        mn.put(x, y, s, role(R_BAR_DIM), role(R_DLG) >> 4)
+    }
+
+    ; a chip in the title bar: " text ", k = (bg << 4) | fg
+    sub chip(ubyte x, uword s, ubyte k) -> ubyte {
         ubyte n = strings.length(s)
-        fill(x, 0, n + 2, fg, C_BLACK)
-        mn.vtext(x + 1, 0, s, S_BOLD, fg, C_BLACK)
+        fill(x, 0, n + 2, k & 15, k >> 4)
+        mn.vtext(x + 1, 0, s, S_BOLD, k & 15, k >> 4)
         return x + n + 2
     }
 
@@ -137,20 +193,23 @@ ui {
     sub draw_toolbar() {
         mn.compose_begin()      ; drawn row by row in one pass each: no flash
         mn.bt_n = 0
-        ; Sunset title bar: stripes with black chips
+        ; title bar: the theme's fill with chips for the name, file name, ownCloud, modified
         mn.stripes(0, 0, 80)
-        void chip(1, iso:"X16 SHEETS", C_YELLOW)
-        ubyte x = chip(14, mn.filename, C_WHITE)
+        void chip(1, iso:"X16 SHEETS", role(R_TTL_NAME))
+        ubyte tk = role(R_TTL_TXT)
+        ubyte x = chip(14, mn.filename, tk)
         if x < 47
             x = 47
+        tk &= $f0
         if mn.cloud_doc
-            x = chip(x, iso:"ownCloud", C_LGREEN) + 1
+            x = chip(x, iso:"ownCloud", tk | role(R_CHIP_OK)) + 1
         if mn.modified
-            void chip(x, iso:"modified", C_LRED)
+            void chip(x, iso:"modified", tk | role(R_TTL_WARN))
         icon(77, 0, icons.I_QUIT, B_QUIT, false)
 
-        fill(0, 1, 80, 0, C_DGRAY)
-        fill(0, 2, 80, 0, C_DGRAY)
+        ubyte tb = role(R_TOOL)
+        fill(0, 1, 80, 0, tb)
+        fill(0, 2, 80, 0, tb)
         icon(1, 1, icons.I_NEW, B_NEW, false)
         icon(4, 1, icons.I_OPEN, B_OPEN, false)
         icon(7, 1, icons.I_SAVE, B_SAVE, false)
@@ -182,10 +241,17 @@ ui {
         icon(32, 2, icons.I_DELCOL, B_DELCOL, false)
         icon(37, 2, icons.I_NARROW, B_NARROW, false)
         icon(40, 2, icons.I_WIDER, B_WIDER, false)
-        mn.put(50, 2, iso:"cells", C_LGRAY, C_DGRAY)
-        mn.num(56, 2, mn.nused, C_WHITE, C_DGRAY)
-        mn.put(62, 2, iso:"free", C_LGRAY, C_DGRAY)
-        mn.num(67, 2, mn.free_count(), C_WHITE, C_DGRAY)
+        ; counters: light on a dark toolbar (Sunset: grey labels, cream numbers), else dark
+        ubyte lf = C_DGRAY
+        ubyte nf = C_BLACK
+        if dark(tb) {
+            lf = C_LGRAY
+            nf = C_WHITE
+        }
+        mn.put(50, 2, iso:"cells", lf, tb)
+        mn.num(56, 2, mn.nused, nf, tb)
+        mn.put(62, 2, iso:"free", lf, tb)
+        mn.num(67, 2, mn.free_count(), nf, tb)
         mn.draw_fbar()
         mn.compose_end()
     }
@@ -220,7 +286,8 @@ ui {
         iso:"Wider columns (or drag a header edge)",
         iso:"Cancel the entry (Esc)",
         iso:"Enter the entry (Return)",
-        iso:"Insert a function" ]
+        iso:"Insert a function",
+        iso:"Click Quill: next theme" ]
 
     sub show_tip() {
         ubyte id = cx16.r0L
@@ -239,21 +306,37 @@ ui {
     sub draw_box(ubyte x, ubyte y, ubyte w, ubyte h) {
         ubyte r
         for r in y to y + h - 1
-            fill(x, r, w, 0, C_LGRAY)
-        fill(x, y, w, 0, C_BLACK)
-        fill(x, y + h - 1, w, 0, C_BLACK)
+            fill(x, r, w, 0, role(R_DLG) >> 4)
+        fill(x, y, w, 0, role(R_DLG_EDGE))
+        fill(x, y + h - 1, w, 0, role(R_DLG_EDGE))
     }
 
-    ; Sunset: warnings (bg RED) keep a pink title bar with cream text, the rest lavender with black
+    ; a dialog with a title bar: the theme's warning colours when bg is RED, else its title colours
     sub title_box(ubyte x, ubyte y, ubyte w, ubyte h, uword title, ubyte bg) {
-        ubyte fg = C_WHITE
-        if bg != C_RED {
-            bg = C_PURPLE
-            fg = C_BLACK
-        }
+        ubyte k = role(R_DLG_TTL)
+        if bg == C_RED
+            k = role(R_DLG_WARN)
+        ubyte fg = k & 15
+        bg = k >> 4
         draw_box(x, y, w, h)
         fill(x, y, w, fg, bg)
         mn.vtext(x + 2, y, title, S_BOLD, fg, bg)
+    }
+
+    ; SHSA's Save As browser (shsa.p8 draws the folder path, the list and the name into it); no room
+    ; for this there. The positions are SHSA's (BX = 6, BY = 3, BW = 68, name row BY + 17, buttons BY + 19)
+    sub sa_frame() {
+        uword t = iso:"Save As on the SD card"
+        if cx16.r0L != 0
+            t = iso:"Save As to ownCloud"
+        title_box(6, 3, 68, 21, t, C_BLUE)
+        hint(8, 5, iso:"Folder:")
+        button(52, 5, iso:" Up ")
+        button(59, 5, iso:"New folder")
+        say(8, 20, iso:"Name:")
+        hint(8, 22, iso:"Double-click opens a folder  F7=new folder")
+        button(52, 22, iso:" Save ")
+        button(62, 22, iso:"Cancel")
     }
 
     sub dialog_input_e() -> bool {
@@ -265,7 +348,7 @@ ui {
         ubyte n = strings.length(buf)
         ubyte k
         title_box(16, 11, 48, 7, title, C_BLUE)
-        mn.put(18, 13, iso:"Name:", 0, C_LGRAY)
+        say(18, 13, iso:"Name:")
         button(24, 16, iso:" OK ")
         button(40, 16, iso:" Cancel ")
         bool dirty = true
@@ -317,7 +400,7 @@ ui {
         ubyte k
         ubyte m = cx16.r0L              ; drawing clobbers r0
         title_box(18, 12, 44, 5, iso:"Please confirm", C_RED)
-        mn.put(20, 14, msgs[m], 0, C_LGRAY)
+        say(20, 14, msgs[m])
         button(24, 15, iso:" Yes ")
         button(46, 15, iso:" No ")
         mn.prev_btn = true
@@ -344,7 +427,7 @@ ui {
     sub message_e() {
         ubyte m = cx16.r1L              ; drawing clobbers r0/r1
         title_box(14, 12, 52, 5, titles[cx16.r0L], C_BLUE)
-        mn.put(16, 14, msgs[m], 0, C_LGRAY)
+        say(16, 14, msgs[m])
         button(36, 15, iso:" OK ")
         mn.prev_btn = true
         repeat {
@@ -396,11 +479,11 @@ ui {
     sub conflict_e() -> ubyte {
         ubyte ex = cx16.r0L             ; drawing clobbers r0
         title_box(14, 11, 52, 7, iso:"Save conflict", C_RED)
-        mn.put(16, 13, mn.nbuf, 0, C_LGRAY)
+        say(16, 13, mn.nbuf)
         if ex != 0
-            mn.put(16, 14, iso:"already exists on ownCloud.", 0, C_LGRAY)
+            say(16, 14, iso:"already exists on ownCloud.")
         else
-            mn.put(16, 14, iso:"was changed on ownCloud since you opened it.", 0, C_LGRAY)
+            say(16, 14, iso:"was changed on ownCloud since you opened it.")
         button(17, 16, iso:"Overwrite")
         button(32, 16, iso:"New name")
         button(47, 16, iso:" Cancel ")

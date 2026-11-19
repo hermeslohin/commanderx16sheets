@@ -45,6 +45,39 @@ fl {
     const ubyte C_DGRAY = 11
     const ubyte C_GRAY = 12
     const ubyte C_LGRAY = 15
+    ; theme roles (theme.p8's rl[] in main RAM, the same R_ numbers): dialog body, title bar,
+    ; buttons, top/bottom rows, hints, list header
+    const ubyte R_DLG = 50
+    const ubyte R_DLG_TTL = 51
+    const ubyte R_DLG_BTN = 53
+    const ubyte R_DLG_EDGE = 54
+    const ubyte R_BAR_DIM = 27
+    const ubyte R_TAPE = 28
+    sub role(ubyte r) -> ubyte {
+        return @(mn.theme_rl + r)
+    }
+    sub dlg_bg() -> ubyte {
+        return role(R_DLG) >> 4
+    }
+    ; a hint (dim) on the dialog body
+    sub hint(ubyte x, ubyte y, uword s) {
+        mn.put(x, y, s, role(R_BAR_DIM), dlg_bg())
+    }
+    ; body text
+    sub say(ubyte x, ubyte y, uword s) {
+        mn.put(x, y, s, role(R_DLG) & 15, dlg_bg())
+    }
+    sub button(ubyte x, ubyte y, uword label) {
+        ubyte k = role(R_DLG_BTN)
+        mn.pill(x, y, label, k & 15, k >> 4, dlg_bg())
+    }
+    ; title bar row
+    sub title_bar(ubyte x, ubyte y, ubyte w, uword title) {
+        ubyte k = role(R_DLG_TTL)
+        mn.vfill(x, y, w, 0, k >> 4)
+        mn.vtext(x + 2, y, title, 1, k & 15, k >> 4)
+    }
+
     const uword row = $0608         ; 72  picker row from list_row
     const uword pickname = $0650    ; 64  chosen name / key file name
     const uword setag = $0690       ; 48  etag in/out
@@ -263,9 +296,10 @@ fl {
         ubyte r
         for r in 0 to PROWS - 1
             p_row(r)
-        mn.put(PX + 2, PY + PROWS + 4, iso:"      of      ", C_DGRAY, C_LGRAY)
-        mn.num(PX + 2, PY + PROWS + 4, p_sel + 1, C_DGRAY, C_LGRAY)
-        mn.num(PX + 11, PY + PROWS + 4, p_total, C_DGRAY, C_LGRAY)
+        ubyte f = role(R_BAR_DIM)
+        hint(PX + 2, PY + PROWS + 4, iso:"      of      ")
+        mn.num(PX + 2, PY + PROWS + 4, p_sel + 1, f, dlg_bg())
+        mn.num(PX + 11, PY + PROWS + 4, p_total, f, dlg_bg())
     }
 
     sub p_move(word d) {
@@ -294,9 +328,9 @@ fl {
     sub draw_box(ubyte x, ubyte y, ubyte w, ubyte h) {
         ubyte r
         for r in y to y + h - 1
-            mn.vfill(x, r, w, 0, C_LGRAY)
-        mn.vfill(x, y, w, 0, 0)
-        mn.vfill(x, y + h - 1, w, 0, 0)
+            mn.vfill(x, r, w, 0, dlg_bg())
+        mn.vfill(x, y, w, 0, role(R_DLG_EDGE))
+        mn.vfill(x, y + h - 1, w, 0, role(R_DLG_EDGE))
     }
 
     ; chosen index in p_sel; false = cancelled
@@ -306,13 +340,13 @@ fl {
         ubyte lastclick = 255
         ubyte lastt
         draw_box(PX, PY, PW, PROWS + 6)
-        mn.vfill(PX, PY, PW, 0, C_PURPLE)
-        mn.vtext(PX + 2, PY, title, 1, 0, C_PURPLE)
-        mn.vfill(PX + 1, PY + 2, PW - 2, 0, C_YELLOW)
-        mn.put(PX + 2, PY + 2, header, 0, C_YELLOW)
-        mn.put(PX + 17, PY + PROWS + 4, iso:"Enter=open  Esc=cancel", C_DGRAY, C_LGRAY)
-        mn.pill(PX + PW - 22, PY + PROWS + 4, iso:" Open ", 0, C_YELLOW, C_LGRAY)
-        mn.pill(PX + PW - 12, PY + PROWS + 4, iso:"Cancel", 0, C_YELLOW, C_LGRAY)
+        title_bar(PX, PY, PW, title)
+        ubyte hk = role(R_TAPE)
+        mn.vfill(PX + 1, PY + 2, PW - 2, 0, hk >> 4)
+        mn.put(PX + 2, PY + 2, header, hk & 15, hk >> 4)
+        hint(PX + 17, PY + PROWS + 4, iso:"Enter=open  Esc=cancel")
+        button(PX + PW - 22, PY + PROWS + 4, iso:" Open ")
+        button(PX + PW - 12, PY + PROWS + 4, iso:"Cancel")
         p_list()
         if p_total == 0
             mn.put(PX + 2, LROW, iso:"(no spreadsheets found)", C_DGRAY, C_WHITE)

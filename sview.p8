@@ -174,17 +174,14 @@ sview {
         }
     }
 
-    ; icon cell pair with a coloured face (Sunset: violet faces get cream glyphs, the others black)
-    sub icon(ubyte col, ubyte row, ubyte k, ubyte id, ubyte face) {
-        ubyte k2 = face << 4
-        if face == vid.C_GRAY
-            k2 |= vid.C_WHITE
+    ; icon cell pair, kc = (face << 4) | glyph colour
+    sub icon(ubyte col, ubyte row, ubyte k, ubyte id, ubyte kc) {
         vid.r_ch[0] = k * 2
         vid.r_ch[1] = k * 2 + 1
         vid.r_sty[0] = vid.S_RAW | $30
         vid.r_sty[1] = vid.S_RAW | $30
-        vid.r_col[0] = k2
-        vid.r_col[1] = k2
+        vid.r_col[0] = kc
+        vid.r_col[1] = kc
         vid.render_run(row, col, 2)
         add_btn(col, row, id)
     }
@@ -203,7 +200,7 @@ sview {
     ; ---------------- formula bar ----------------
     sub draw_fbar() {
         ubyte i
-        vid.fill(0, FBAR, 80, 0, vid.C_DGRAY)
+        vid.fill(0, FBAR, 80, 0, theme.rl[theme.R_TOOL])
         ; cell name chip
         for i in 0 to 6 {
             vid.r_ch[i] = 32
@@ -214,13 +211,17 @@ sview {
         for i in 0 to n - 1
             vid.r_ch[i + 1] = tmp[i]
         vid.render_run(FBAR, 0, 7)
-        icon(8, FBAR, icons.I_QUIT, B_ECANCEL, vid.C_GRAY)
-        icon(11, FBAR, icons.I_OK, B_EOK, vid.C_GRAY)
-        icon(14, FBAR, icons.I_FX, B_EFX, vid.C_PURPLE)
-        ; contents: cream on black, yellow while editing
-        ubyte k = (vid.C_BLACK << 4) | vid.C_WHITE
+        icon(8, FBAR, icons.I_QUIT, B_ECANCEL, theme.rl[theme.R_BTN])
+        icon(11, FBAR, icons.I_OK, B_EOK, theme.rl[theme.R_BTN])
+        icon(14, FBAR, icons.I_FX, B_EFX, vid.C_PURPLE << 4)
+        ; contents: the theme's formula colours; while editing yellow on ink, the field
+        ; highlight colour on a light bar (the cursor is a block of that colour)
+        ubyte k = theme.rl[theme.R_FBAR]
+        ubyte ek = vid.C_YELLOW
+        if k >= $10
+            ek = theme.rl[theme.R_FIELD_HI]
         if editing
-            k = (vid.C_BLACK << 4) | vid.C_YELLOW
+            k = (k & $f0) | ek
         for i in 0 to 79 - EDITX {
             vid.r_ch[i] = 32
             vid.r_sty[i] = 0
@@ -233,7 +234,7 @@ sview {
             }
             if elen == 0
                 vid.r_ch[1] = 32
-            vid.r_col[ecur + 1] = vid.C_YELLOW << 4   ; cursor: yellow block
+            vid.r_col[ecur + 1] = ek << 4       ; cursor: a block
         } else {
             n = cell_source(cur_r, cur_c, &ebuf)
             for i in 0 to n - 1 {
@@ -321,13 +322,13 @@ sview {
         for x in 0 to 79 {
             vid.r_ch[x] = 32
             vid.r_sty[x] = 0
-            vid.r_col[x] = vid.C_DGRAY << 4
+            vid.r_col[x] = theme.rl[theme.R_HDR2]
         }
-        vid.r_col[GX1] = vid.C_BLACK << 4
+        vid.r_col[GX1] = theme.rl[theme.R_DESK] << 4
         for i in 0 to vis_n - 1 {
             ubyte c = vis_col[i]
             ubyte w = vis_w[i]
-            ubyte k = (vid.C_DGRAY << 4) | vid.C_WHITE
+            ubyte k = theme.rl[theme.R_HDR2]
             if c >= s_c1 and c <= s_c2
                 k = vid.C_RED << 4
             for x in vis_x[i] to vis_x[i] + w - 1
@@ -354,7 +355,7 @@ sview {
             vid.r_col[x] = (vid.C_WHITE << 4) | vid.C_BLACK
         }
         ; row header
-        k = (vid.C_BLACK << 4) | vid.C_GRAY
+        k = theme.rl[theme.R_ROWHDR]
         if r >= s_r1 and r <= s_r2
             k = vid.C_RED << 4
         for x in 0 to RHW - 1 {
@@ -472,15 +473,13 @@ sview {
     sub draw_vscroll_cell(ubyte sr) {
         vid.r_ch[79] = 32
         vid.r_sty[79] = 0
-        vid.r_col[79] = vid.C_BLACK << 4
-        if sr == 0 {
+        vid.r_col[79] = theme.rl[theme.R_SCROLL]
+        if sr == 0
             vid.r_ch[79] = iso:'^'
-            vid.r_col[79] = vid.C_RED
-        } else if sr == GROWS - 1 {
+        else if sr == GROWS - 1
             vid.r_ch[79] = iso:'v'
-            vid.r_col[79] = vid.C_RED
-        } else if sr == vthumb()
-            vid.r_col[79] = vid.C_RED << 4
+        else if sr == vthumb()
+            vid.r_col[79] = theme.rl[theme.R_THUMB] << 4
     }
 
     sub vthumb() -> ubyte {
@@ -495,15 +494,13 @@ sview {
         for x in 0 to 79 {
             vid.r_ch[x] = 32
             vid.r_sty[x] = 0
-            vid.r_col[x] = vid.C_BLACK << 4
+            vid.r_col[x] = theme.rl[theme.R_SCROLL]
         }
         vid.r_ch[RHW] = iso:'<'
-        vid.r_col[RHW] = vid.C_RED
         vid.r_ch[78] = iso:'>'
-        vid.r_col[78] = vid.C_RED
         ; thumb over 72 cells for columns 0..255
         ubyte t = RHW + 1 + lsb((leftcol as uword * 71) / 255)
-        vid.r_col[t] = vid.C_RED << 4
+        vid.r_col[t] = theme.rl[theme.R_THUMB] << 4
         vid.render_run(HSCROLL, 0, 80)
     }
 
@@ -539,7 +536,7 @@ sview {
     ; ---------------- status bar ----------------
     str stat = iso:"                                 "
     sub draw_status() {
-        ; Sunset: cream on black; Quill (theme sprite) sits in columns 0-1
+        ; the theme's status bar colours; Quill (theme sprite) sits in columns 0-1
         ; Work out the selection SUM first, then compose the whole row in vid's r_ buffers and render
         ; it in one pass: blanking the row first and drawing each piece on top made it flash.
         bool show_sum = not single() and not editing
@@ -568,17 +565,22 @@ sview {
         for i in 0 to 79 {
             vid.r_ch[i] = 32
             vid.r_sty[i] = 0
-            vid.r_col[i] = (vid.C_BLACK << 4) | vid.C_WHITE
+            vid.r_col[i] = theme.rl[theme.R_STAT]
         }
-        st_put(3, status_msg, vid.C_WHITE)
+        st_put(3, status_msg, theme.rl[theme.R_STAT] & 15)
         if show_sum {
-            st_put(49, iso:"Sum", vid.C_LGRAY)
+            ; labels: light grey on an ink bar (Sunset), else the theme's label colour
+            ubyte lb = vid.C_LGRAY
+            if theme.rl[theme.R_STAT] >= $10
+                lb = theme.rl[theme.R_STAT_LBL]
+            ubyte hi = theme.rl[theme.R_STAT_HI]
+            st_put(49, iso:"Sum", lb)
             if e != 0
                 st_put(53, formula.err_text(e), vid.C_RED)
             else
-                st_put(53, &numfmt.out, vid.C_YELLOW)
-            st_put(68, iso:"Count", vid.C_LGRAY)
-            st_put(74, conv.str_uw(cnt), vid.C_YELLOW)
+                st_put(53, &numfmt.out, hi)
+            st_put(68, iso:"Count", lb)
+            st_put(74, conv.str_uw(cnt), hi)
         }
         vid.render_run(STATUS_ROW, 0, 80)
     }
@@ -587,7 +589,7 @@ sview {
         ubyte n = 0
         while @(s + n) != 0 and col < 80 {
             vid.r_ch[col] = @(s + n)
-            vid.r_col[col] = (vid.C_BLACK << 4) | fg
+            vid.r_col[col] = (theme.rl[theme.R_STAT] & $f0) | fg
             col++
             n++
         }

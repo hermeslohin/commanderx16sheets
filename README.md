@@ -11,6 +11,8 @@ Everything lands in `build/`. `make sd SD=<dir>` copies what goes on the SD card
 | `X16SHEETS.PRG` | the program (main RAM) |
 | `SHUI.BIN` `SHOPS.BIN` `SHFILE.BIN` `SHXW.BIN` `SHXR.BIN` `SHSA.BIN` | its code libraries (RAM banks 63, 57, 62, 59, 58, 55) - required |
 | `X16LINK.BIN` `X16DOCS.BIN` | X16Link libraries (banks 60/61) - only for ownCloud |
+| `SHTH.BIN` `X16THEME1.BIN` .. `X16THEME6.BIN` | the theme loader and the X16 Office themes - optional (without them: the built-in Sunset Arcade colours, no Quill) |
+| `X16THEME.CFG` | written when you pick a theme (one byte, the theme number) |
 | `X16LINK.KEY` | this X16's hub key - only for ownCloud (same file X16 Write uses) |
 
 Run: `make run`. Needs a mouse and 512 KB of RAM (2 MB gives more cells).
@@ -21,11 +23,16 @@ Row 0 title/quit - rows 1-2 icon toolbars - row 3 formula bar - column letters -
 with grid lines - horizontal scroll bar - status bar (tool tips on hover; Sum and Count of the
 selection, like a desktop spreadsheet).
 
-Colours: the X16 Office "Sunset Arcade" theme (`theme.p8`, the same file in X16 Write, Files and
-Calendar): striped title bar with black chips, violet toolbars with coloured icon faces, cream cells
-with lavender grid lines, the active cell and selection in pink, black status bar where Quill, a
-little pencil (a sprite), blinks and hops after a successful open or save. Only the screen palette
-changes: saved `.xlsx` files carry no colours from it (cells have no colour in this format).
+Colours: the X16 Office themes (`theme.p8` and `tools/mkthemes.py`, the same files in X16 Write,
+Files and Calendar). Six theme files come with it: Sunset Arcade (the default: striped title bar with
+black chips, violet toolbars with coloured icon faces, cream cells with lavender grid lines, black
+status bar), Crayon Desk, Comic Book, Beach Hut, Chalkboard and Winter Cabin. Quill, a little pencil
+(a sprite) at the left end of the status bar, blinks and hops after a successful open or save.
+**Click Quill for the next theme** (hover over it for the tip). The choice is saved in
+`X16THEME.CFG`, which every X16 Office app reads at start, so a theme picked in one app is used by
+all of them. A theme changes only the screen: colour indexes keep their meaning (the selection is
+still pink-red, errors red), and saved `.xlsx` files carry no colours from it. Without `SHTH.BIN`
+and the `X16THEME*.BIN` files X16 Sheets uses the built-in Sunset Arcade colours, without Quill.
 
 Toolbar 1: New, Open, Save, Save As | Cut, Copy, Paste, Select All | Clear | Bold | Align left,
 Center, Align right (the X16 Write icons). Toolbar 2: AutoSum, Insert function | Number format
@@ -86,7 +93,7 @@ The cells live in banked RAM, so main RAM only holds code:
 | 1-4 | hash index (16384 slots) |
 | 5-54 | cell records, 64 bytes each: **6400 cells** on a 512 KB X16 |
 | 64-255 | more records on bigger machines, up to **12288 cells** (2 MB) |
-| 56 | used-row bitmap (saving), SD file names (picker) |
+| 56 | used-row bitmap (saving), SD file names (picker); theme file + SHTH.BIN while a theme is read |
 | 55, 57-59, 62, 63 | X16 Sheets code libraries (55 = SHSA.BIN, the Save As browser) |
 | 60, 61 | X16Link libraries |
 
@@ -107,17 +114,24 @@ reference, reported in the status bar). Opening a file recalculates everything o
 | `formula.p8` | evaluator (iterative shunting-yard), reference rewriting, recalculation |
 | `numfmt.p8` | number display formats |
 | `vid.p8` | X16 Write's 80x30 bitmap text renderer + grid lines |
-| `theme.p8` | Sunset Arcade theme: palette roles, title stripes / pill glyphs, Quill (shared with the other X16 Office apps) |
+| `theme.p8` | X16 Office themes: role table (which colour each part of the screen uses, built-in = Sunset Arcade), title fill, pills, Quill; reads `X16THEME<n>.BIN` / `X16THEME.CFG` (shared with the other X16 Office apps: keep identical) |
+| `shth.p8` | `SHTH.BIN`: runs theme.p8's file reading (`theme.init` / `theme.next`) from bank 56, so main RAM keeps only the drawing (like X16 Write's `X16WPTH.BIN`) |
 | `shui.p8` `shops.p8` `shfile.p8` `shxw.p8` `shxr.p8` `shsa.p8` | the bank libraries (see `shlibs.p8`) |
 | `tools/gen_syms.py` | generates each library's view of the main program (like X16 Write's `gen_wpsyms.py`) |
 | `tools/gen_icons.py` | toolbar icons (the first 13 are X16 Write's) |
+| `tools/mkthemes.py` | writes `X16THEME1.BIN` .. `X16THEME6.BIN` (shared with the other X16 Office apps: keep identical) |
 | `lib/x16link/` | vendored X16Link client library (from x16-office-hub) |
 
 ## Tests
 
 * `make test`: `test/ftest.p8` (formula engine, 48 checks) and `test/run_uitest.sh` (drives the real
   app + libraries: typing, fill, AutoSum, formats, insert/delete rows and columns, Save As / New /
-  Open through the dialogs, XLSX round trip) headless in x16emu.
+  Open through the dialogs, XLSX round trip) headless in x16emu, and `test/run_themetest.sh`.
+* `make themetest` (`test/run_themetest.sh`): reads the themes the way X16 Sheets does at start
+  (no `X16THEME.CFG` = theme 1, which must equal the built-in colours), clicks Quill through all six
+  and back to the first, and checks that `X16THEME.CFG` brings the chosen theme back. Screenshots:
+  `build/themetest/theme-0.png` (built-in), `theme-1.png` .. `theme-6.png`, plus each theme's Save As
+  browser and a warning dialog (`PY=` a python3 with Pillow splits the GIF).
 * `make cloudtest` (`test/run_cloudtest.sh`): the whole ownCloud path in the emulator
   (`-uart1 ximodem`) against the real hub link server with an in-memory ownCloud
   (`test/fakehub.py`, needs `../x16-office-hub`): opens a desktop-style xlsx, saves back, Save As

@@ -32,10 +32,13 @@ vid {
     const ubyte S_RAW = 8
     const ubyte S_GRIDR = $40
     const ubyte S_GRIDB = $80
-    const ubyte GRIDCOL = 15
     const ubyte NFONTS = 3
 
     const uword FONT_VRAM = $6000       ; bank 1, $16000 .. 3 fonts of 2 KB
+    ; theme.p8 (run in SHTH.BIN, see shth.p8) reads a theme file into this buffer: 512 bytes of the
+    ; SD picker's names (bank 56 at $a800, cells.name_put), idle at start-up and when Quill is clicked
+    const ubyte TBANK = 56
+    const uword TBUF = $a800
 
     ; cell composition arrays: filled by the caller, drawn by render_run()
     ubyte[80] r_ch
@@ -105,7 +108,7 @@ vid {
         cx16.VERA_L0_VSCROLL_L = 0
         cx16.VERA_L0_VSCROLL_H = 0
         cx16.VERA_DC_VIDEO = (cx16.VERA_DC_VIDEO & $07) | $50       ; layer0 + sprites, layer1 off
-        cx16.VERA_DC_BORDER = C_DGRAY
+        cx16.VERA_DC_BORDER = C_BLACK   ; Sunset's border (a theme file sets its own)
         clear_screen(C_BLACK)
         cx16.mouse_config(1, 80, 30)
     }
@@ -369,13 +372,13 @@ vid {
                             g = $ff
                     }
                     if r == 7 and (fl & $20) != 0 {
-                        fillv(4, (GRIDCOL << 4) | GRIDCOL)
+                        fillv(4, theme.rl[theme.R_GRID] * $11)
                     } else {
                         cx16.VERA_DATA0 = @(pp + (g >> 6))
                         cx16.VERA_DATA0 = @(pp + ((g >> 4) & 3))
                         cx16.VERA_DATA0 = @(pp + ((g >> 2) & 3))
                         if (fl & $10) != 0
-                            cx16.VERA_DATA0 = (@(pp + (g & 3)) & $f0) | GRIDCOL
+                            cx16.VERA_DATA0 = (@(pp + (g & 3)) & $f0) | theme.rl[theme.R_GRID]
                         else
                             cx16.VERA_DATA0 = @(pp + (g & 3))
                     }

@@ -116,6 +116,7 @@ VARS = [
     ("clip_cut", "app", "clip_cut", "bool"),
     ("cloud_ok", "app", "cloud_ok", "bool"),
     ("hop", "theme", "hop", "ubyte"),  # = 32: Quill cheers (theme.cheer())
+    ("theme_rl", "theme", "rl", "addr"),  # the theme's role table: @(mn.theme_rl + R_...)
 ]
 
 

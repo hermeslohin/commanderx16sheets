@@ -9,6 +9,7 @@
 ;   bank 62 SHFILE.BIN  New / Open / Save, SD card picker, ownCloud (X16Link)
 ;   bank 63 SHUI.BIN    toolbars, tool tips, dialogs, menus
 ;   bank 55 SHSA.BIN    Save As folder browser (SD card and ownCloud)
+;   bank 56 SHTH.BIN    theme loader at $AA00, loaded only when needed (app.themes(); see shth.p8)
 
 shl {
     %option ignore_unused
@@ -18,6 +19,7 @@ shl {
     const ubyte FILE = 62
     const ubyte UI = 63
     const ubyte SA = 55
+    const ubyte TH = 56
 
     ; ---- SHUI (63)
     extsub @bank UI $A000 = ui_init() clobbers(A, X, Y)
@@ -30,6 +32,7 @@ shl {
     extsub @bank UI $A015 = menu(ubyte x @R0, ubyte y @R1, ubyte which @R2) clobbers(X, Y) -> ubyte @A
     extsub @bank UI $A018 = conflict(ubyte exists @R0) clobbers(X, Y) -> ubyte @A
     extsub @bank UI $A01B = upload_icons() clobbers(A, X, Y)
+    extsub @bank UI $A01E = sa_frame(ubyte cl @R0) clobbers(A, X, Y)
 
     ; dialog titles / messages (SHUI owns the texts)
     const ubyte T_SAVE_SD = 0
@@ -51,6 +54,10 @@ shl {
     extsub @bank FILE $A006 = new_sheet() clobbers(A, X, Y)
     extsub @bank FILE $A009 = open_sheet() clobbers(A, X, Y)
     extsub @bank FILE $A00C = save_sheet(ubyte ask @R0) clobbers(A, X, Y)
+
+    ; ---- SHTH (56, at $AA00: loaded by app.themes() each time)
+    extsub @bank TH $AA00 = th_init() clobbers(A, X, Y)
+    extsub @bank TH $AA03 = th_run(uword rl @R0, uword dk @R1, uword msg @R2, uword cur @R3, ubyte what @R4) clobbers(X, Y) -> bool @A
 
     ; ---- SHSA (55)
     extsub @bank SA $A000 = sa_init() clobbers(A, X, Y)

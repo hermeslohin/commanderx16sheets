@@ -34,11 +34,7 @@ main {
 sa {
     const ubyte C_WHITE = 1
     const ubyte C_RED = 2
-    const ubyte C_PURPLE = 4
     const ubyte C_BLUE = 6
-    const ubyte C_YELLOW = 7
-    const ubyte C_DGRAY = 11
-    const ubyte C_LGRAY = 15
     const uword pickname = $0650    ; 64 bytes of golden RAM, shared with X16WPCL.BIN
 
     ubyte[64] home                  ; X16 Sheets' folder (absolute), for X16LINK.KEY
@@ -312,13 +308,7 @@ sa {
     }
 
     sub draw_dialog() {
-        draw_box(BX, BY, BW, 21)
-        mn.vfill(BX, BY, BW, 0, C_PURPLE)
-        uword t = iso:"Save As on the SD card"
-        if bcl
-            t = iso:"Save As to ownCloud"
-        mn.vtext(BX + 2, BY, t, 1, 0, C_PURPLE)
-        mn.put(BX + 2, BY + 2, iso:"Folder:", C_DGRAY, C_LGRAY)
+        shl.sa_frame(bcl as ubyte)      ; SHUI draws the box, title, labels and buttons (theme colours)
         if bcl {
             lkut.scopy(iso:"/Documents/", &tmp, 72)
             lkut.scopy(&bdir, &tmp + 11, 61)
@@ -328,13 +318,8 @@ sa {
         ubyte n = lkut.slen(&tmp)
         if n > 34
             tp += n - 34
-        mn.put(BX + 10, BY + 2, tp, 0, C_LGRAY)
-        mn.pill(BX + 46, BY + 2, iso:" Up ", 0, C_YELLOW, C_LGRAY)
-        mn.pill(BX + 53, BY + 2, iso:"New folder", 0, C_YELLOW, C_LGRAY)
-        mn.put(BX + 2, NY, iso:"Name:", 0, C_LGRAY)
-        mn.put(BX + 2, HY, iso:"Double-click opens a folder  F7=new folder", C_DGRAY, C_LGRAY)
-        mn.pill(BX + 46, HY, iso:" Save ", 0, C_YELLOW, C_LGRAY)
-        mn.pill(BX + 56, HY, iso:"Cancel", 0, C_YELLOW, C_LGRAY)
+        ubyte k = @(mn.theme_rl + 50)   ; theme.R_DLG: the dialog body's colours
+        mn.put(BX + 10, BY + 2, tp, k & 15, k >> 4)
         draw_name()
     }
 
@@ -460,14 +445,6 @@ sa {
         }
         if n < 26
             lkut.scopy(iso:".xlsx", mn.nbuf + n, 6)
-    }
-
-    sub draw_box(ubyte x, ubyte y, ubyte w, ubyte h) {
-        ubyte r
-        for r in y to y + h - 1
-            mn.vfill(x, r, w, 0, C_LGRAY)
-        mn.vfill(x, y, w, 0, 0)
-        mn.vfill(x, y + h - 1, w, 0, 0)
     }
 
     ; Save As browser: true = save as mn.nbuf in the folder shown (SD: the current directory,

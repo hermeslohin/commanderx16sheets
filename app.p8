@@ -64,6 +64,20 @@ app {
         return true
     }
 
+    ; what = 0: the saved theme (X16THEME.CFG), 1: the next one (Quill). SHTH.BIN reads the theme
+    ; files (theme.init / theme.next, no room for them in main RAM); it is loaded each time into RAM
+    ; bank 56 at $AA00 (the SD picker's names, idle then). false: no theme files (or no SHTH.BIN)
+    sub themes(ubyte what) -> bool {
+        ubyte b = cx16.getrambank()
+        cx16.rambank(shl.TH)
+        uword e = diskio.load_raw(iso:"SHTH.BIN", $aa00)
+        cx16.rambank(b)
+        if e == 0
+            return false
+        shl.th_init()
+        return shl.th_run(&theme.rl, &theme.dk, &theme.msg, &theme.cur, what)
+    }
+
     ; the bank libraries call these main-RAM routines; this (never taken) path keeps the compiler
     ; from removing the ones the main program doesn't use itself
     sub keep() {
@@ -111,7 +125,7 @@ app {
         vid.load_fonts()
         vid.gfx_init()
         shl.upload_icons()
-        theme.init()                    ; after the icons: its glyphs go to the same font slot
+        void themes(0)                  ; after the icons: the theme (X16THEME.CFG / X16THEMEn.BIN), Quill on
         cells.init()
         sview.set_filename(iso:"untitled.xlsx")
         sview.set_status(iso:"Welcome! Click a cell and type. Formulas start with =")
@@ -527,6 +541,8 @@ app {
 
     sub hover(ubyte cx, ubyte cy) {
         ubyte id = sview.find_button(cx, cy)
+        if theme.cur != 0 and theme.on_quill(cx, cy)
+            id = 30                         ; SHUI's tip for Quill
         if id != last_tip {
             last_tip = id
             shl.show_tip(id)
@@ -599,6 +615,15 @@ app {
         ubyte id = sview.find_button(cx, cy)
         if id != 0 {
             do_button(id)
+            return
+        }
+        if theme.on_quill(cx, cy) {
+            ; Quill: the next theme, for every X16 Office app (X16THEME.CFG)
+            if themes(1) {
+                sview.set_status(theme.msg)
+                sview.redraw_everything()
+                theme.cheer()
+            }
             return
         }
         ; formula bar text: start editing / move the cursor
@@ -910,6 +935,6 @@ app {
         } else if p >= 10
             pcttxt[14] = iso:'0' + p / 10
         pcttxt[15] = iso:'0' + p % 10
-        vid.text(1, sview.STATUS_ROW, pcttxt, 0, 0, vid.C_LGRAY)
+        vid.text(3, sview.STATUS_ROW, pcttxt, 0, theme.rl[theme.R_STAT_HI], theme.rl[theme.R_STAT] >> 4)
     }
 }

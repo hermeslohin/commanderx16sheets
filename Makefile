@@ -5,7 +5,7 @@ PROG8C ?= java -jar $(HOME)/prog8c.jar
 export PROG8C
 EMU ?= x16emu
 
-.PHONY: all sd run run-modem test cloudtest clean
+.PHONY: all sd run run-modem test themetest cloudtest clean
 all:
 	./build.sh
 
@@ -24,11 +24,17 @@ run-modem: all
 	 elif [ ! -f build/run/X16LINK.KEY ]; then echo "warning: no X16LINK.KEY (set KEY=...)"; fi
 	cd build/run && $(EMU) -scale 2 -uart1 ximodem -prg X16SHEETS.PRG -run
 
-# formula engine (headless) + the whole UI (headless) ; `make cloudtest` needs ../x16-office-hub
+# formula engine (headless) + the whole UI (headless) + themes ; `make cloudtest` needs ../x16-office-hub
 test:
 	java -jar $(HOME)/prog8c.jar -target cx16 -srcdirs . -out build/ftest test/ftest.p8 > /dev/null
 	test/runemu.sh build/ftest/ftest.prg build/ftest/ftest.out 120 && grep -a -E "FAIL|ALL PASS" build/ftest/ftest.out.txt
 	test/run_uitest.sh | grep -a -E "FAIL|ALL PASS"
+	test/run_themetest.sh | grep -a -E "FAIL|RESULT"
+
+# themes: all six theme files, Quill, X16THEME.CFG; screenshots in build/themetest/theme-*.png
+# (PY = a python3 with Pillow to split them, e.g. PY=../x16-office-hub/hub/.venv/bin/python3)
+themetest:
+	test/run_themetest.sh
 
 cloudtest:
 	test/run_cloudtest.sh
